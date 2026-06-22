@@ -1,5 +1,12 @@
 {
-  "groceries": [],
+  "groceries": [
+    {
+      "id": "mqpq663cqfm",
+      "text": "brown sugar",
+      "cat": "Pantry",
+      "done": false
+    }
+  ],
   "mealPlan": {
     "sunday": {
       "breakfast": "",
