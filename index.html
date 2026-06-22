@@ -309,6 +309,93 @@
     }
     #toast.show { opacity: 1; }
 
+    /* ── TASK PROGRESS ────────────────────────────────────── */
+    .progress-card {
+      margin-bottom: 16px;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-top {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+    }
+    .progress-label { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+    .progress-status { font-size: 13px; color: var(--sub); margin-top: 3px; }
+    .progress-pct {
+      font-size: 36px; font-weight: 700; letter-spacing: -1px;
+      font-variant-numeric: tabular-nums; line-height: 1;
+    }
+    .big-bar {
+      height: 12px; background: var(--bg); border-radius: 6px;
+      overflow: hidden; margin-bottom: 14px;
+    }
+    .big-fill {
+      height: 100%; border-radius: 6px;
+      transition: width 0.6s cubic-bezier(.34,1.2,.64,1);
+      background: linear-gradient(90deg, var(--fill-a), var(--fill-b));
+      position: relative; overflow: hidden;
+    }
+    .big-fill::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%);
+      animation: shimmer 1.8s infinite;
+    }
+    @keyframes shimmer {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .breakdown {
+      display: flex; gap: 16px; flex-wrap: wrap;
+    }
+    .bd-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--sub);
+    }
+    .bd-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .bd-bar { width: 60px; height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
+    .bd-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+    .confetti-burst {
+      pointer-events: none;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      overflow: hidden; border-radius: var(--r);
+    }
+    .c-piece {
+      position: absolute; width: 8px; height: 8px; border-radius: 2px;
+      animation: cfetti 1s ease-out forwards;
+    }
+    @keyframes cfetti {
+      0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(-120px) rotate(720deg); opacity: 0; }
+    }
+
+    /* ── WEEK AHEAD ────────────────────────────────────────── */
+    .week-card { margin-bottom: 16px; }
+    .week-row {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .week-row:last-child { border-bottom: none; }
+    .week-day-col { min-width: 68px; }
+    .week-day-name {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.3px; color: var(--sub);
+    }
+    .week-day-name.today { color: inherit; }
+    .week-day-date { font-size: 11px; color: var(--ter); margin-top: 1px; }
+    .week-events { flex: 1; }
+    .week-ev {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; padding: 2px 0;
+    }
+    .week-ev + .week-ev { margin-top: 4px; }
+    .week-ev-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .week-ev-time { font-size: 11px; color: var(--sub); white-space: nowrap; }
+    .week-free { font-size: 13px; color: var(--ter); font-style: italic; }
+    .week-today-pill {
+      font-size: 10px; font-weight: 600; padding: 1px 6px;
+      background: var(--accent-bg); color: var(--accent-col);
+      border-radius: 8px; margin-left: 4px;
+    }
+
     /* ── UTIL ─────────────────────────────────────────────── */
     .flex-b { display: flex; justify-content: space-between; align-items: center; }
     .mt8  { margin-top: 8px; }
@@ -502,8 +589,136 @@ function startClock() {
 }
 
 // ═══════════════════════════════════════════════
-//  RENDER — PERSONAL TAB
+//  PROGRESS CARD
 // ═══════════════════════════════════════════════
+function progressCard(p) {
+  const tasks   = S.data[p].tasks;
+  const all     = [...tasks.urgent, ...tasks.medium, ...tasks.low];
+  const done    = all.filter(t=>t.done).length;
+  const total   = all.length;
+  const pct     = total ? Math.round(done/total*100) : 0;
+  const accent  = p==='becca' ? 'var(--becca)' : 'var(--geoff)';
+
+  const status  = pct===0   ? 'Ready to go 💪'
+                : pct<34    ? 'Getting started 🌱'
+                : pct<67    ? 'On a roll 🔥'
+                : pct<100   ? 'Almost there ⚡'
+                : 'All done! 🎉';
+
+  // gradient shifts red→orange→yellow→green
+  const fillA   = pct===100 ? '#34c759'
+                : pct>=67   ? '#ff9500'
+                : pct>=34   ? '#ff6b00'
+                : '#ff3b30';
+  const fillB   = pct===100 ? '#30d158'
+                : pct>=67   ? '#34c759'
+                : pct>=34   ? '#ff9500'
+                : '#ff6b00';
+
+  const miniBar = (arr, col) => {
+    const t=arr.length, d=arr.filter(x=>x.done).length;
+    const w = t ? Math.round(d/t*100) : 0;
+    return `<div class="bd-item">
+      <div class="bd-dot" style="background:${col}"></div>
+      <div class="bd-bar"><div class="bd-fill" style="width:${w}%;background:${col}"></div></div>
+      <span>${d}/${t}</span>
+    </div>`;
+  };
+
+  const confetti = pct===100 ? `<div class="confetti-burst" id="cb-${p}"></div>` : '';
+
+  return `
+    <div class="card progress-card" id="prog-${p}">
+      ${confetti}
+      <div class="progress-top">
+        <div>
+          <div class="progress-label">Task Progress</div>
+          <div class="progress-status">${status}</div>
+        </div>
+        <div class="progress-pct" style="color:${fillB}">${pct}%</div>
+      </div>
+      <div class="big-bar">
+        <div class="big-fill" style="width:${pct}%;--fill-a:${fillA};--fill-b:${fillB}"></div>
+      </div>
+      <div class="breakdown">
+        ${miniBar(tasks.urgent,'var(--urgent)')}
+        ${miniBar(tasks.medium,'var(--medium)')}
+        ${miniBar(tasks.low,   'var(--low)')}
+        ${total===0 ? `<span style="font-size:12px;color:var(--ter)">Add tasks below to track progress</span>` : ''}
+      </div>
+    </div>`;
+}
+
+function maybeConfetti(p) {
+  const cb = document.getElementById(`cb-${p}`);
+  if (!cb) return;
+  const colors = ['#ff2d55','#ff9500','#34c759','#0071e3','#af52de','#ffcc00'];
+  for (let i=0; i<24; i++) {
+    const el = document.createElement('div');
+    el.className = 'c-piece';
+    el.style.cssText = `
+      left:${Math.random()*100}%;
+      top:${60+Math.random()*40}%;
+      background:${colors[i%colors.length]};
+      animation-delay:${Math.random()*0.4}s;
+      animation-duration:${0.8+Math.random()*0.6}s;
+      transform:rotate(${Math.random()*360}deg);
+      border-radius:${Math.random()>0.5?'50%':'2px'};
+      width:${6+Math.random()*6}px;
+      height:${6+Math.random()*6}px;
+    `;
+    cb.appendChild(el);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  WEEK AHEAD CARD
+// ═══════════════════════════════════════════════
+function weekAheadCard(p) {
+  const accent  = p==='becca' ? 'var(--becca)' : 'var(--geoff)';
+  const evts    = S.data[p].events || [];
+  const todayD  = new Date();
+  todayD.setHours(0,0,0,0);
+
+  const rows = Array.from({length:7}, (_,i) => {
+    const d = new Date(todayD);
+    d.setDate(todayD.getDate()+i);
+    const ds    = d.toISOString().slice(0,10);
+    const isToday = i===0;
+    const dayEvts = evts.filter(e=>e.date===ds).sort((a,b)=>a.time.localeCompare(b.time));
+    const dayName = d.toLocaleDateString('en-US',{weekday:'short'});
+    const dayDate = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+
+    const evtHTML = dayEvts.length===0
+      ? `<div class="week-free">Free day</div>`
+      : dayEvts.map(e => `
+        <div class="week-ev">
+          <div class="week-ev-dot" style="background:${accent}"></div>
+          <span>${esc(e.title)}</span>
+          <span class="week-ev-time">${esc(fmtTime(e.time))}</span>
+        </div>`).join('');
+
+    return `
+      <div class="week-row">
+        <div class="week-day-col">
+          <div class="week-day-name${isToday?' today':''}">${dayName}${isToday?` <span class="week-today-pill" style="background:${accent}22;color:${accent}">today</span>`:''}</div>
+          <div class="week-day-date">${dayDate}</div>
+        </div>
+        <div class="week-events">${evtHTML}</div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="card week-card">
+      <div class="card-hdr">
+        <span class="card-ttl">📆 Week Ahead</span>
+        <button class="btn btn-ghost btn-sm" data-act="show-event-modal" data-p="${p}">+ Add Event</button>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+
 function renderPerson(p) {
   const d      = S.data[p];
   const accent = p === 'becca' ? 'var(--becca)' : 'var(--geoff)';
@@ -565,6 +780,7 @@ function renderPerson(p) {
       <div class="greeting">${greeting(d.name, accent)}</div>
       <div class="dateline">${fmtDate()}</div>
     </div>
+    ${progressCard(p)}
     <div class="g2">
       <div class="card">
         <div class="card-hdr">
@@ -593,6 +809,7 @@ function renderPerson(p) {
           </div>` : ''}
       </div>
     </div>
+    ${weekAheadCard(p)}
     <div class="g3">
       ${tCol('urgent','Urgent')}
       ${tCol('medium','Medium')}
@@ -601,6 +818,8 @@ function renderPerson(p) {
 
   document.getElementById(`pane-${p}`).innerHTML = html;
   bindPerson(p);
+  // fire confetti if all tasks done
+  requestAnimationFrame(() => maybeConfetti(p));
 }
 
 function bindPerson(p) {
