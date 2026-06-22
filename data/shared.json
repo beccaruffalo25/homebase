@@ -5,6 +5,12 @@
       "text": "brown sugar",
       "cat": "Pantry",
       "done": false
+    },
+    {
+      "id": "mqpq6ecxa7e",
+      "text": "oat milk",
+      "cat": "Dairy",
+      "done": false
     }
   ],
   "mealPlan": {
