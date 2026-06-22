@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home Base 🏡</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #f2f2f7;
+      --card:       #ffffff;
+      --text:       #1c1c1e;
+      --sub:        #6c6c70;
+      --ter:        #aeaeb2;
+      --border:     rgba(60,60,67,0.12);
+      --shadow:     0 2px 20px rgba(0,0,0,0.07);
+      --shadow-sm:  0 1px 6px rgba(0,0,0,0.06);
+      --becca:      #ff2d55;
+      --becca-bg:   rgba(255,45,85,0.08);
+      --geoff:      #0071e3;
+      --geoff-bg:   rgba(0,113,227,0.08);
+      --shared:     #30b050;
+      --shared-bg:  rgba(48,176,80,0.08);
+      --urgent:     #ff3b30;
+      --medium:     #ff9500;
+      --low:        #34c759;
+      --r:          16px;
+      --rs:         10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── LOADING ─────────────────────────────────────────── */
+    #loading {
+      position: fixed; inset: 0; background: var(--bg); z-index: 500;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 16px;
+    }
+    #loading.gone { display: none; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--geoff);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-txt { font-size: 15px; color: var(--sub); font-weight: 500; }
+
+    /* ── MODAL ────────────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0; z-index: 400;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .overlay.gone { display: none; }
+    .modal {
+      background: white; border-radius: 20px; padding: 28px;
+      max-width: 400px; width: calc(100% - 48px);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+    }
+    .modal h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 8px; }
+    .modal p  { font-size: 14px; color: var(--sub); line-height: 1.5; margin-bottom: 20px; }
+    .modal-row { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+
+    /* ── HEADER ───────────────────────────────────────────── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 58px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .logo { font-size: 17px; font-weight: 700; letter-spacing: -0.4px; white-space: nowrap; }
+    .tabs { display: flex; gap: 3px; background: var(--bg); padding: 3px; border-radius: 11px; }
+    .tab-btn {
+      border: none; background: transparent;
+      padding: 6px 18px; border-radius: 8px;
+      font-size: 14px; font-weight: 500; color: var(--sub);
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.6); }
+    .tab-btn.on { background: white; color: var(--text); font-weight: 600; box-shadow: var(--shadow-sm); }
+    .tab-btn[data-t="becca"].on  { color: var(--becca); }
+    .tab-btn[data-t="geoff"].on  { color: var(--geoff); }
+    .tab-btn[data-t="shared"].on { color: var(--shared); }
+    #clock {
+      margin-left: auto; font-size: 14px; font-weight: 500;
+      color: var(--sub); font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+
+    /* ── MAIN ─────────────────────────────────────────────── */
+    main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .pane { display: none; }
+    .pane.on { display: block; }
+
+    /* ── PERSONAL HEADER ──────────────────────────────────── */
+    .p-head { margin-bottom: 24px; }
+    .greeting { font-size: 30px; font-weight: 700; letter-spacing: -0.7px; margin-bottom: 4px; }
+    .greeting b { font-weight: 700; }
+    .dateline { font-size: 15px; color: var(--sub); }
+
+    /* ── GRID ─────────────────────────────────────────────── */
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 760px) { .g2, .g3 { grid-template-columns: 1fr; } }
+
+    /* ── CARD ─────────────────────────────────────────────── */
+    .card { background: var(--card); border-radius: var(--r); padding: 20px; box-shadow: var(--shadow); }
+    .card-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .card-ttl { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+    .badge {
+      font-size: 12px; font-weight: 500; color: var(--sub);
+      background: var(--bg); padding: 2px 9px; border-radius: 20px;
+    }
+
+    /* ── INPUTS ───────────────────────────────────────────── */
+    .irow { display: flex; gap: 7px; margin-bottom: 12px; }
+    .ifield {
+      flex: 1; border: 1.5px solid var(--border); border-radius: var(--rs);
+      padding: 8px 11px; font-size: 14px; font-family: inherit;
+      background: var(--bg); color: var(--text); outline: none;
+      transition: border-color 0.15s;
+    }
+    .ifield:focus { border-color: var(--geoff); background: white; }
+    .isel {
+      border: 1.5px solid var(--border); border-radius: var(--rs);
+      padding: 8px 10px; font-size: 13px; font-family: inherit;
+      background: var(--bg); color: var(--text); outline: none; cursor: pointer;
+    }
+    .btn {
+      border: none; border-radius: var(--rs); padding: 8px 14px;
+      font-size: 14px; font-weight: 500; font-family: inherit;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .btn-blue  { background: var(--geoff);  color: white; }
+    .btn-green { background: var(--shared); color: white; }
+    .btn-pink  { background: var(--becca);  color: white; }
+    .btn-sm    { padding: 5px 10px; font-size: 12px; }
+    .btn-ghost {
+      background: transparent; color: var(--sub);
+      border: 1.5px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--bg); }
+    .btn:hover { opacity: 0.85; }
+
+    /* ── SCHEDULE ─────────────────────────────────────────── */
+    .ev-item { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--border); }
+    .ev-item:last-child { border-bottom: none; }
+    .ev-time { font-size: 12px; font-weight: 500; color: var(--sub); white-space: nowrap; min-width: 68px; padding-top: 2px; }
+    .ev-dot  { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+    .ev-ttl  { font-size: 14px; font-weight: 500; }
+    .ev-loc  { font-size: 12px; color: var(--sub); margin-top: 2px; }
+
+    /* ── GOALS ────────────────────────────────────────────── */
+    .goal-row { display: flex; align-items: center; gap: 9px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .goal-row:last-child { border-bottom: none; }
+    .circle {
+      width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid var(--border); background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: white; transition: all 0.15s;
+    }
+    .circle.on { }
+    .circle.on::after { content: '✓'; }
+    .goal-txt { flex: 1; font-size: 14px; transition: all 0.15s; }
+    .goal-txt.done { text-decoration: line-through; color: var(--ter); }
+    .x-btn {
+      opacity: 0; background: none; border: none; cursor: pointer;
+      color: var(--ter); font-size: 14px; padding: 2px 4px;
+      transition: opacity 0.15s; line-height: 1;
+    }
+    .goal-row:hover .x-btn,
+    .task-row:hover .x-btn,
+    .grocery-row:hover .x-btn,
+    .chore-row:hover .x-btn,
+    .todo-row:hover .x-btn { opacity: 1; }
+    .prog-wrap { margin-top: 12px; }
+    .prog-bar  { height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    .prog-lbl  { font-size: 12px; color: var(--sub); margin-top: 5px; display: flex; justify-content: space-between; }
+
+    /* ── TASK BOARD ───────────────────────────────────────── */
+    .task-row { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; transition: background 0.1s; }
+    .task-row:hover { background: var(--bg); }
+    .t-check {
+      width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0;
+      border: 1.5px solid var(--border); background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: white; transition: all 0.15s;
+    }
+    .t-check.on::after { content: '✓'; }
+    .t-txt { flex: 1; font-size: 14px; line-height: 1.3; }
+    .t-txt.done { text-decoration: line-through; color: var(--ter); }
+    .col-lbl {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+      text-transform: uppercase; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .dot8 { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .cnt { margin-left: auto; font-size: 11px; color: var(--sub); background: var(--bg); padding: 1px 7px; border-radius: 10px; font-weight: 500; }
+    .urgent-lbl { color: var(--urgent); }
+    .medium-lbl { color: var(--medium); }
+    .low-lbl    { color: var(--low);    }
+    .urgent-dot { background: var(--urgent); }
+    .medium-dot { background: var(--medium); }
+    .low-dot    { background: var(--low);    }
+    .urgent-check.on { background: var(--urgent); border-color: var(--urgent); }
+    .medium-check.on { background: var(--medium); border-color: var(--medium); }
+    .low-check.on    { background: var(--low);    border-color: var(--low);    }
+
+    /* ── GROCERY ──────────────────────────────────────────── */
+    .grocery-row { display: flex; align-items: center; gap: 9px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .grocery-row:last-child { border-bottom: none; }
+    .g-check {
+      width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid var(--border); background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: white; transition: all 0.15s;
+    }
+    .g-check.on { background: var(--shared); border-color: var(--shared); }
+    .g-check.on::after { content: '✓'; }
+    .g-txt { flex: 1; font-size: 14px; }
+    .g-txt.done { text-decoration: line-through; color: var(--ter); }
+    .g-cat { font-size: 11px; padding: 2px 7px; border-radius: 10px; background: var(--bg); color: var(--sub); }
+
+    /* ── CHORES ───────────────────────────────────────────── */
+    .chore-row { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px; background: var(--bg); margin-bottom: 5px; transition: background 0.1s; }
+    .chore-row:hover { background: #e8e8ed; }
+    .c-check {
+      width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid var(--border); background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: white; transition: all 0.15s;
+    }
+    .c-check.on { background: var(--shared); border-color: var(--shared); }
+    .c-check.on::after { content: '✓'; }
+    .c-txt { flex: 1; font-size: 14px; }
+    .c-txt.done { text-decoration: line-through; color: var(--ter); }
+    .assignee-pill {
+      font-size: 11px; font-weight: 600; padding: 2px 8px;
+      border-radius: 10px; white-space: nowrap;
+    }
+    .pill-becca  { background: var(--becca-bg);  color: var(--becca);  }
+    .pill-geoff  { background: var(--geoff-bg);  color: var(--geoff);  }
+    .pill-both   { background: var(--shared-bg); color: var(--shared); }
+
+    /* ── TODOS ────────────────────────────────────────────── */
+    .todo-row { display: flex; align-items: center; gap: 9px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .todo-row:last-child { border-bottom: none; }
+    .td-check {
+      width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid var(--border); background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: white; transition: all 0.15s;
+    }
+    .td-check.on { background: var(--shared); border-color: var(--shared); }
+    .td-check.on::after { content: '✓'; }
+    .td-txt { flex: 1; font-size: 14px; }
+    .td-txt.done { text-decoration: line-through; color: var(--ter); }
+    .td-who { font-size: 11px; color: var(--sub); }
+
+    /* ── MEAL PLAN ────────────────────────────────────────── */
+    .meal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; overflow-x: auto; }
+    .meal-day  { min-width: 96px; }
+    .meal-dh {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.4px; color: var(--sub); text-align: center;
+      margin-bottom: 5px;
+    }
+    .meal-dh.today { color: var(--shared); }
+    .meal-dh small { display: block; font-size: 10px; font-weight: 400; letter-spacing: 0; margin-top: 1px; }
+    .meal-slot {
+      background: var(--bg); border-radius: 8px; padding: 7px 8px;
+      margin-bottom: 4px; min-height: 52px; cursor: pointer;
+      transition: background 0.1s;
+    }
+    .meal-slot:hover { background: #e4e4ea; }
+    .meal-label { font-size: 9px; font-weight: 600; color: var(--ter); text-transform: uppercase; margin-bottom: 3px; }
+    .meal-txt   { font-size: 12px; color: var(--text); line-height: 1.3; }
+    .meal-slot.empty .meal-txt { color: var(--ter); font-style: italic; }
+
+    /* ── SHARED HEADER ────────────────────────────────────── */
+    .shared-hdr { margin-bottom: 24px; }
+    .shared-ttl { font-size: 30px; font-weight: 700; letter-spacing: -0.7px; margin-bottom: 4px; }
+    .shared-ttl span { color: var(--shared); }
+
+    /* ── EMPTY ────────────────────────────────────────────── */
+    .empty { text-align: center; color: var(--ter); font-size: 14px; padding: 20px 0; }
+    .empty-icon { font-size: 26px; margin-bottom: 6px; }
+
+    /* ── SAVE TOAST ───────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 20px; right: 20px;
+      background: #1c1c1e; color: white;
+      padding: 8px 14px; border-radius: 20px;
+      font-size: 13px; font-weight: 500; z-index: 300;
+      opacity: 0; transition: opacity 0.25s; pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── UTIL ─────────────────────────────────────────────── */
+    .flex-b { display: flex; justify-content: space-between; align-items: center; }
+    .mt8  { margin-top: 8px; }
+    .mt12 { margin-top: 12px; }
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p class="loading-txt">Loading Home Base...</p>
+</div>
+
+<!-- Setup modal -->
+<div id="setup-modal" class="overlay gone">
+  <div class="modal">
+    <h2>🏡 Welcome to Home Base</h2>
+    <p>Enter your GitHub Personal Access Token. It'll be saved on your device so you don't have to enter it again.</p>
+    <input type="password" id="tok-inp" class="ifield" style="width:100%" placeholder="ghp_..." autocomplete="off" />
+    <div class="modal-row">
+      <button id="tok-btn" class="btn btn-blue">Get Started →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Meal edit modal -->
+<div id="meal-modal" class="overlay gone">
+  <div class="modal">
+    <h2 id="meal-modal-ttl">Edit Meal</h2>
+    <p>What's on the menu?</p>
+    <textarea id="meal-inp" class="ifield" rows="3" style="width:100%;resize:none;"></textarea>
+    <div class="modal-row">
+      <button id="meal-cancel" class="btn btn-ghost">Cancel</button>
+      <button id="meal-save" class="btn btn-green">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Event add modal (injected dynamically) -->
+
+<!-- Save toast -->
+<div id="toast">Syncing...</div>
+
+<!-- Header -->
+<header>
+  <div class="logo">🏡 Home Base</div>
+  <nav class="tabs">
+    <button class="tab-btn on" data-t="becca">Becca</button>
+    <button class="tab-btn"    data-t="geoff">Geoff</button>
+    <button class="tab-btn"    data-t="shared">Shared</button>
+  </nav>
+  <div id="clock"></div>
+</header>
+
+<!-- Panes -->
+<main>
+  <div id="pane-becca"  class="pane on"></div>
+  <div id="pane-geoff"  class="pane"></div>
+  <div id="pane-shared" class="pane"></div>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════
+const REPO    = 'beccaruffalo25/homebase';
+const API     = 'https://api.github.com';
+const DAYS    = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+const DSHORT  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MEALS   = ['breakfast','lunch','dinner'];
+const MEAL_LBL = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+const S = {
+  tab:      'becca',
+  token:    null,
+  shas:     {},
+  data:     { becca: null, geoff: null, shared: null },
+  mealEdit: null
+};
+
+// ═══════════════════════════════════════════════
+//  DEFAULT DATA
+// ═══════════════════════════════════════════════
+const defPerson = name => ({
+  name,
+  tasks:  { urgent: [], medium: [], low: [] },
+  goals:  [],
+  events: []
+});
+
+const defShared = () => ({
+  groceries: [],
+  mealPlan: Object.fromEntries(DAYS.map(d => [d, { breakfast:'', lunch:'', dinner:'' }])),
+  chores:  [],
+  todos:   []
+});
+
+// ═══════════════════════════════════════════════
+//  GITHUB API
+// ═══════════════════════════════════════════════
+const hdrs = () => ({
+  Authorization: `token ${S.token}`,
+  Accept: 'application/vnd.github.v3+json'
+});
+
+async function ghLoad(file, fallback) {
+  try {
+    const r = await fetch(`${API}/repos/${REPO}/contents/data/${file}`, { headers: hdrs() });
+    if (!r.ok) { S.shas[file] = null; return fallback; }
+    const j = await r.json();
+    S.shas[file] = j.sha;
+    return JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\s/g,'')))));
+  } catch {
+    S.shas[file] = null;
+    return fallback;
+  }
+}
+
+async function ghSave(file, data) {
+  showToast();
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+  const body = { message: `Update ${file}`, content };
+  if (S.shas[file]) body.sha = S.shas[file];
+  try {
+    const r = await fetch(`${API}/repos/${REPO}/contents/data/${file}`, {
+      method: 'PUT',
+      headers: { ...hdrs(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    if (j.content) S.shas[file] = j.content.sha;
+  } catch(e) { console.error(e); }
+  hideToast();
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+let toastTimer;
+function showToast() {
+  clearTimeout(toastTimer);
+  document.getElementById('toast').classList.add('show');
+}
+function hideToast() {
+  toastTimer = setTimeout(() => document.getElementById('toast').classList.remove('show'), 600);
+}
+
+// ═══════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════
+const uid   = () => Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const today = () => new Date().toISOString().slice(0,10);
+
+function greeting(name, accent) {
+  const h = new Date().getHours();
+  const msg = h >= 5 && h < 12  ? `Good morning, <b style="color:${accent}">${esc(name)}</b> ☀️`
+            : h >= 12 && h < 17 ? `Good afternoon, <b style="color:${accent}">${esc(name)}</b>`
+            : h >= 17 && h < 21 ? `Good evening, <b style="color:${accent}">${esc(name)}</b> 🌙`
+            : `Hey, <b style="color:${accent}">${esc(name)}</b>. Still up? 🦉`;
+  return msg;
+}
+
+function fmtDate() {
+  return new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+}
+
+function weekDates() {
+  const t = new Date(), dow = t.getDay();
+  return Array.from({length:7}, (_,i) => { const d = new Date(t); d.setDate(t.getDate()-dow+i); return d; });
+}
+
+function fmtTime(t24) {
+  if (!t24) return '';
+  const [h,m] = t24.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${h%12||12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+// ═══════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════
+function startClock() {
+  const el = document.getElementById('clock');
+  const tick = () => el.textContent = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
+  tick(); setInterval(tick, 1000);
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER — PERSONAL TAB
+// ═══════════════════════════════════════════════
+function renderPerson(p) {
+  const d      = S.data[p];
+  const accent = p === 'becca' ? 'var(--becca)' : 'var(--geoff)';
+  const btnCls = p === 'becca' ? 'btn-pink' : 'btn-blue';
+
+  // schedule
+  const evts = (d.events||[]).filter(e => e.date === today())
+    .sort((a,b)=>a.time.localeCompare(b.time));
+  const schedHTML = evts.length === 0
+    ? `<div class="empty"><div class="empty-icon">✨</div>Clear day ahead</div>`
+    : evts.map(e => `
+      <div class="ev-item">
+        <div class="ev-time">${esc(fmtTime(e.time))}</div>
+        <div class="ev-dot" style="background:${accent}"></div>
+        <div>
+          <div class="ev-ttl">${esc(e.title)}</div>
+          ${e.location ? `<div class="ev-loc">📍 ${esc(e.location)}</div>` : ''}
+        </div>
+      </div>`).join('');
+
+  // goals
+  const total = d.goals.length, done = d.goals.filter(g=>g.done).length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+  const goalsHTML = d.goals.length === 0
+    ? `<div class="empty"><div class="empty-icon">🎯</div>No goals yet</div>`
+    : d.goals.map(g => `
+      <div class="goal-row">
+        <button class="circle ${g.done?'on':''}" data-act="goal-toggle" data-p="${p}" data-id="${g.id}" style="${g.done?`background:${accent};border-color:${accent}`:''}"></button>
+        <span class="goal-txt ${g.done?'done':''}">${esc(g.text)}</span>
+        <button class="x-btn" data-act="goal-del" data-p="${p}" data-id="${g.id}">✕</button>
+      </div>`).join('');
+
+  // tasks
+  const tCol = (pri, lbl) => {
+    const list = d.tasks[pri]||[];
+    return `
+      <div class="card">
+        <div class="col-lbl">
+          <div class="dot8 ${pri}-dot"></div>
+          <span class="${pri}-lbl">${lbl}</span>
+          <span class="cnt">${list.length}</span>
+        </div>
+        <div class="irow">
+          <input class="ifield task-inp" placeholder="Add task..." data-p="${p}" data-pri="${pri}" />
+          <button class="btn ${btnCls} btn-sm task-add" data-p="${p}" data-pri="${pri}">+</button>
+        </div>
+        ${list.length===0 ? `<div class="empty" style="padding:10px 0;font-size:13px">No tasks</div>` : ''}
+        ${list.map(t => `
+          <div class="task-row">
+            <button class="t-check ${pri}-check ${t.done?'on':''}" data-act="task-toggle" data-p="${p}" data-pri="${pri}" data-id="${t.id}"></button>
+            <span class="t-txt ${t.done?'done':''}">${esc(t.text)}</span>
+            <button class="x-btn" data-act="task-del" data-p="${p}" data-pri="${pri}" data-id="${t.id}">✕</button>
+          </div>`).join('')}
+      </div>`;
+  };
+
+  const html = `
+    <div class="p-head">
+      <div class="greeting">${greeting(d.name, accent)}</div>
+      <div class="dateline">${fmtDate()}</div>
+    </div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-ttl">📅 Today's Schedule</span>
+          <button class="btn btn-ghost btn-sm" data-act="show-event-modal" data-p="${p}">+ Add</button>
+        </div>
+        ${schedHTML}
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-ttl">🎯 Daily Goals</span>
+          <span class="badge">${done}/${total}</span>
+        </div>
+        <div class="irow">
+          <input class="ifield goal-inp" placeholder="Add a goal..." data-p="${p}" />
+          <button class="btn ${btnCls} btn-sm goal-add" data-p="${p}">+</button>
+        </div>
+        ${goalsHTML}
+        ${total > 0 ? `
+          <div class="prog-wrap">
+            <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${accent}"></div></div>
+            <div class="prog-lbl">
+              <span>${pct}% complete</span>
+              <button class="btn btn-ghost btn-sm" data-act="clear-goals" data-p="${p}">Clear done</button>
+            </div>
+          </div>` : ''}
+      </div>
+    </div>
+    <div class="g3">
+      ${tCol('urgent','Urgent')}
+      ${tCol('medium','Medium')}
+      ${tCol('low','Low')}
+    </div>`;
+
+  document.getElementById(`pane-${p}`).innerHTML = html;
+  bindPerson(p);
+}
+
+function bindPerson(p) {
+  const pane = document.getElementById(`pane-${p}`);
+
+  // goals: add
+  pane.querySelector('.goal-inp').addEventListener('keydown', e => {
+    if (e.key==='Enter') addGoal(p, e.target.value);
+  });
+  pane.querySelector('.goal-add').addEventListener('click', () => {
+    addGoal(p, pane.querySelector('.goal-inp').value);
+  });
+
+  // tasks: add
+  pane.querySelectorAll('.task-inp').forEach(inp => {
+    inp.addEventListener('keydown', e => { if (e.key==='Enter') addTask(p, inp.dataset.pri, inp.value); });
+  });
+  pane.querySelectorAll('.task-add').forEach(btn => {
+    btn.addEventListener('click', () => {
+      addTask(p, btn.dataset.pri, pane.querySelector(`.task-inp[data-pri="${btn.dataset.pri}"]`).value);
+    });
+  });
+
+  // delegated actions
+  pane.addEventListener('click', e => {
+    const el  = e.target.closest('[data-act]');
+    if (!el) return;
+    const act = el.dataset.act;
+    const id  = el.dataset.id;
+    const pr  = el.dataset.pri;
+    const pp  = el.dataset.p;
+    if (act==='goal-toggle')      toggleGoal(pp, id);
+    if (act==='goal-del')         deleteGoal(pp, id);
+    if (act==='task-toggle')      toggleTask(pp, pr, id);
+    if (act==='task-del')         deleteTask(pp, pr, id);
+    if (act==='clear-goals')      clearGoals(pp);
+    if (act==='show-event-modal') showEventModal(pp);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  GOAL ACTIONS
+// ═══════════════════════════════════════════════
+function addGoal(p, txt) {
+  txt = txt.trim(); if (!txt) return;
+  S.data[p].goals.push({id:uid(), text:txt, done:false});
+  ghSave(`${p}.json`, S.data[p]);
+  renderPerson(p);
+}
+function toggleGoal(p, id) {
+  const g = S.data[p].goals.find(g=>g.id===id);
+  if (g) g.done = !g.done;
+  ghSave(`${p}.json`, S.data[p]);
+  renderPerson(p);
+}
+function deleteGoal(p, id) {
+  S.data[p].goals = S.data[p].goals.filter(g=>g.id!==id);
+  ghSave(`${p}.json`, S.data[p]);
+  renderPerson(p);
+}
+function clearGoals(p) {
+  S.data[p].goals = S.data[p].goals.filter(g=>!g.done);
+  ghSave(`${p}.json`, S.data[p]);
+  renderPerson(p);
+}
+
+// ═══════════════════════════════════════════════
+//  TASK ACTIONS
+// ═══════════════════════════════════════════════
+function addTask(p, pri, txt) {
+  txt = txt.trim(); if (!txt) return;
+  S.data[p].tasks[pri].push({id:uid(), text:txt, done:false});
+  ghSave(`${p}.json`, S.data[p]);
+  renderPerson(p);
+}
+function toggleTask(p, pri, id) {
+  const t = S.data[p].tasks[pri].find(t=>t.id===id);
+  if (t) t.done = !t.done;
+  ghSave(`${p}.json`, S.data[p]);
+  renderPerson(p);
+}
+function deleteTask(p, pri, id) {
+  S.data[p].tasks[pri] = S.data[p].tasks[pri].filter(t=>t.id!==id);
+  ghSave(`${p}.json`, S.data[p]);
+  renderPerson(p);
+}
+
+// ═══════════════════════════════════════════════
+//  EVENT MODAL
+// ═══════════════════════════════════════════════
+function showEventModal(p) {
+  const old = document.getElementById('ev-modal');
+  if (old) old.remove();
+  const m = document.createElement('div');
+  m.id = 'ev-modal'; m.className = 'overlay';
+  m.innerHTML = `
+    <div class="modal">
+      <h2>Add Event</h2>
+      <p>Add something to ${p === 'becca' ? 'your' : "Geoff's"} schedule.</p>
+      <input type="text"  id="ev-title" class="ifield" style="width:100%;margin-bottom:8px" placeholder="Event title" />
+      <input type="date"  id="ev-date"  class="ifield" style="width:100%;margin-bottom:8px" value="${today()}" />
+      <input type="time"  id="ev-time"  class="ifield" style="width:100%;margin-bottom:8px" value="09:00" />
+      <input type="text"  id="ev-loc"   class="ifield" style="width:100%" placeholder="Location (optional)" />
+      <div class="modal-row">
+        <button id="ev-cancel" class="btn btn-ghost">Cancel</button>
+        <button id="ev-save"   class="btn ${p==='becca'?'btn-pink':'btn-blue'}">Add Event</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  document.getElementById('ev-cancel').addEventListener('click', () => m.remove());
+  m.addEventListener('click', e => { if (e.target===m) m.remove(); });
+  document.getElementById('ev-save').addEventListener('click', () => {
+    const title = document.getElementById('ev-title').value.trim();
+    const date  = document.getElementById('ev-date').value;
+    const time  = document.getElementById('ev-time').value;
+    const loc   = document.getElementById('ev-loc').value.trim();
+    if (!title||!date||!time) return;
+    if (!S.data[p].events) S.data[p].events = [];
+    S.data[p].events.push({id:uid(), title, date, time, location:loc});
+    ghSave(`${p}.json`, S.data[p]);
+    m.remove();
+    renderPerson(p);
+  });
+  document.getElementById('ev-title').focus();
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER — SHARED TAB
+// ═══════════════════════════════════════════════
+function renderShared() {
+  const d = S.data.shared;
+
+  const grocHTML = d.groceries.length === 0
+    ? `<div class="empty"><div class="empty-icon">🛒</div>List is empty</div>`
+    : d.groceries.map(g => `
+      <div class="grocery-row">
+        <button class="g-check ${g.done?'on':''}" data-act="g-toggle" data-id="${g.id}"></button>
+        <span class="g-txt ${g.done?'done':''}">${esc(g.text)}</span>
+        ${g.cat ? `<span class="g-cat">${esc(g.cat)}</span>` : ''}
+        <button class="x-btn" data-act="g-del" data-id="${g.id}">✕</button>
+      </div>`).join('');
+
+  const choreHTML = d.chores.length === 0
+    ? `<div class="empty"><div class="empty-icon">🧹</div>No chores yet</div>`
+    : d.chores.map(c => `
+      <div class="chore-row">
+        <button class="c-check ${c.done?'on':''}" data-act="c-toggle" data-id="${c.id}"></button>
+        <span class="c-txt ${c.done?'done':''}">${esc(c.text)}</span>
+        <span class="assignee-pill pill-${c.who}">${c.who==='both'?'Both':c.who==='becca'?'Becca':'Geoff'}</span>
+        <button class="x-btn" data-act="c-del" data-id="${c.id}">✕</button>
+      </div>`).join('');
+
+  const todoHTML = d.todos.length === 0
+    ? `<div class="empty"><div class="empty-icon">📋</div>Nothing here</div>`
+    : d.todos.map(t => `
+      <div class="todo-row">
+        <button class="td-check ${t.done?'on':''}" data-act="td-toggle" data-id="${t.id}"></button>
+        <span class="td-txt ${t.done?'done':''}">${esc(t.text)}</span>
+        ${t.who ? `<span class="td-who">${esc(t.who)}</span>` : ''}
+        <button class="x-btn" data-act="td-del" data-id="${t.id}">✕</button>
+      </div>`).join('');
+
+  const wd  = weekDates();
+  const dow = new Date().getDay();
+  const mealHTML = DAYS.map((day,i) => {
+    const mp = d.mealPlan[day]||{};
+    const dm = wd[i].toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    return `
+      <div class="meal-day">
+        <div class="meal-dh ${i===dow?'today':''}">
+          ${DSHORT[i]}<small>${dm}</small>
+        </div>
+        ${MEALS.map(m => `
+          <div class="meal-slot ${mp[m]?'':'empty'}" data-act="meal-edit" data-day="${day}" data-meal="${m}">
+            <div class="meal-label">${m.slice(0,1).toUpperCase()}</div>
+            <div class="meal-txt">${mp[m] ? esc(mp[m]) : 'tap to add'}</div>
+          </div>`).join('')}
+      </div>`;
+  }).join('');
+
+  const html = `
+    <div class="shared-hdr">
+      <div class="shared-ttl">Our <span>Home Base</span> 🏡</div>
+      <div class="dateline">${fmtDate()}</div>
+    </div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-ttl">🛒 Grocery List</span>
+          <button class="btn btn-ghost btn-sm" data-act="g-clear">Clear done</button>
+        </div>
+        <div class="irow">
+          <input class="ifield" id="g-inp" placeholder="Add item..." />
+          <select class="isel" id="g-cat">
+            <option value="">Category</option>
+            <option>Produce</option><option>Protein</option>
+            <option>Dairy</option><option>Pantry</option>
+            <option>Frozen</option><option>Snacks</option>
+            <option>Drinks</option><option>Other</option>
+          </select>
+          <button class="btn btn-green btn-sm" data-act="g-add">+</button>
+        </div>
+        <div id="groc-list">${grocHTML}</div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-ttl">📋 Shared To-Dos</span>
+          <button class="btn btn-ghost btn-sm" data-act="td-clear">Clear done</button>
+        </div>
+        <div class="irow">
+          <input class="ifield" id="td-inp" placeholder="Add to-do..." />
+          <select class="isel" id="td-who">
+            <option value="">Who?</option>
+            <option value="Becca">Becca</option>
+            <option value="Geoff">Geoff</option>
+            <option value="Both">Both</option>
+          </select>
+          <button class="btn btn-green btn-sm" data-act="td-add">+</button>
+        </div>
+        <div id="todo-list">${todoHTML}</div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-hdr">
+        <span class="card-ttl">🧹 Chore Chart</span>
+        <button class="btn btn-ghost btn-sm" data-act="c-reset">Reset week</button>
+      </div>
+      <div class="irow">
+        <input class="ifield" id="c-inp" placeholder="Add chore..." />
+        <select class="isel" id="c-who">
+          <option value="both">Both</option>
+          <option value="becca">Becca</option>
+          <option value="geoff">Geoff</option>
+        </select>
+        <button class="btn btn-green btn-sm" data-act="c-add">+</button>
+      </div>
+      <div id="chore-list">${choreHTML}</div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-ttl">🍽️ Meal Plan</span>
+        <span class="badge">This Week</span>
+      </div>
+      <div class="meal-grid">${mealHTML}</div>
+    </div>`;
+
+  document.getElementById('pane-shared').innerHTML = html;
+  bindShared();
+}
+
+function bindShared() {
+  const pane = document.getElementById('pane-shared');
+
+  document.getElementById('g-inp').addEventListener('keydown', e => { if(e.key==='Enter') addGrocery(); });
+  document.getElementById('td-inp').addEventListener('keydown', e => { if(e.key==='Enter') addTodo(); });
+  document.getElementById('c-inp').addEventListener('keydown', e => { if(e.key==='Enter') addChore(); });
+
+  pane.addEventListener('click', e => {
+    const el  = e.target.closest('[data-act]');
+    if (!el) return;
+    const act = el.dataset.act;
+    const id  = el.dataset.id;
+    if (act==='g-add')    addGrocery();
+    if (act==='g-toggle') toggleGrocery(id);
+    if (act==='g-del')    deleteGrocery(id);
+    if (act==='g-clear')  clearGroceries();
+    if (act==='td-add')   addTodo();
+    if (act==='td-toggle') toggleTodo(id);
+    if (act==='td-del')   deleteTodo(id);
+    if (act==='td-clear') clearTodos();
+    if (act==='c-add')    addChore();
+    if (act==='c-toggle') toggleChore(id);
+    if (act==='c-del')    deleteChore(id);
+    if (act==='c-reset')  resetChores();
+    if (act==='meal-edit') openMealModal(el.dataset.day, el.dataset.meal);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  GROCERY
+// ═══════════════════════════════════════════════
+function addGrocery() {
+  const txt = document.getElementById('g-inp').value.trim();
+  const cat = document.getElementById('g-cat').value;
+  if (!txt) return;
+  S.data.shared.groceries.push({id:uid(), text:txt, cat, done:false});
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+function toggleGrocery(id) {
+  const g = S.data.shared.groceries.find(g=>g.id===id);
+  if (g) g.done = !g.done;
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+function deleteGrocery(id) {
+  S.data.shared.groceries = S.data.shared.groceries.filter(g=>g.id!==id);
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+function clearGroceries() {
+  S.data.shared.groceries = S.data.shared.groceries.filter(g=>!g.done);
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+
+// ═══════════════════════════════════════════════
+//  TODOS
+// ═══════════════════════════════════════════════
+function addTodo() {
+  const txt = document.getElementById('td-inp').value.trim();
+  const who = document.getElementById('td-who').value;
+  if (!txt) return;
+  S.data.shared.todos.push({id:uid(), text:txt, who, done:false});
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+function toggleTodo(id) {
+  const t = S.data.shared.todos.find(t=>t.id===id);
+  if (t) t.done = !t.done;
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+function deleteTodo(id) {
+  S.data.shared.todos = S.data.shared.todos.filter(t=>t.id!==id);
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+function clearTodos() {
+  S.data.shared.todos = S.data.shared.todos.filter(t=>!t.done);
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+
+// ═══════════════════════════════════════════════
+//  CHORES
+// ═══════════════════════════════════════════════
+function addChore() {
+  const txt = document.getElementById('c-inp').value.trim();
+  const who = document.getElementById('c-who').value;
+  if (!txt) return;
+  S.data.shared.chores.push({id:uid(), text:txt, who, done:false});
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+function toggleChore(id) {
+  const c = S.data.shared.chores.find(c=>c.id===id);
+  if (c) c.done = !c.done;
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+function deleteChore(id) {
+  S.data.shared.chores = S.data.shared.chores.filter(c=>c.id!==id);
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+function resetChores() {
+  S.data.shared.chores.forEach(c => c.done = false);
+  ghSave('shared.json', S.data.shared); renderShared();
+}
+
+// ═══════════════════════════════════════════════
+//  MEAL PLAN
+// ═══════════════════════════════════════════════
+function openMealModal(day, meal) {
+  S.mealEdit = {day, meal};
+  const cur = (S.data.shared.mealPlan[day]||{})[meal]||'';
+  const dayLabel = DSHORT[DAYS.indexOf(day)];
+  document.getElementById('meal-modal-ttl').textContent = `${dayLabel} — ${MEAL_LBL[meal]}`;
+  document.getElementById('meal-inp').value = cur;
+  document.getElementById('meal-modal').classList.remove('gone');
+  setTimeout(()=>document.getElementById('meal-inp').focus(),100);
+}
+function closeMealModal() {
+  document.getElementById('meal-modal').classList.add('gone');
+  S.mealEdit = null;
+}
+function saveMeal() {
+  if (!S.mealEdit) return;
+  const {day,meal} = S.mealEdit;
+  const val = document.getElementById('meal-inp').value.trim();
+  if (!S.data.shared.mealPlan[day]) S.data.shared.mealPlan[day]={};
+  S.data.shared.mealPlan[day][meal] = val;
+  ghSave('shared.json', S.data.shared);
+  closeMealModal(); renderShared();
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+async function loadAll() {
+  const [becca, geoff, shared] = await Promise.all([
+    ghLoad('becca.json',  defPerson('Becca')),
+    ghLoad('geoff.json',  defPerson('Geoff')),
+    ghLoad('shared.json', defShared())
+  ]);
+  S.data.becca  = becca;
+  S.data.geoff  = geoff;
+  S.data.shared = shared;
+  if (!S.data.becca.name)  S.data.becca.name  = 'Becca';
+  if (!S.data.geoff.name)  S.data.geoff.name  = 'Geoff';
+
+  renderPerson('becca');
+  renderPerson('geoff');
+  renderShared();
+  startClock();
+
+  // tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('on'));
+      document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+      btn.classList.add('on');
+      document.getElementById(`pane-${btn.dataset.t}`).classList.add('on');
+      S.tab = btn.dataset.t;
+    });
+  });
+
+  // meal modal
+  document.getElementById('meal-cancel').addEventListener('click', closeMealModal);
+  document.getElementById('meal-save').addEventListener('click', saveMeal);
+  document.getElementById('meal-modal').addEventListener('click', e => {
+    if (e.target===document.getElementById('meal-modal')) closeMealModal();
+  });
+  document.getElementById('meal-inp').addEventListener('keydown', e => {
+    if (e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveMeal();}
+  });
+
+  document.getElementById('loading').classList.add('gone');
+}
+
+async function init() {
+  let token = localStorage.getItem('homebase_token');
+
+  if (!token) {
+    document.getElementById('loading').classList.add('gone');
+    document.getElementById('setup-modal').classList.remove('gone');
+
+    const go = async () => {
+      token = document.getElementById('tok-inp').value.trim();
+      if (!token) return;
+      localStorage.setItem('homebase_token', token);
+      S.token = token;
+      document.getElementById('setup-modal').classList.add('gone');
+      document.getElementById('loading').classList.remove('gone');
+      await loadAll();
+    };
+
+    document.getElementById('tok-btn').addEventListener('click', go);
+    document.getElementById('tok-inp').addEventListener('keydown', e => { if(e.key==='Enter') go(); });
+    return;
+  }
+
+  S.token = token;
+  try {
+    await loadAll();
+  } catch(err) {
+    console.error(err);
+    localStorage.removeItem('homebase_token');
+    document.getElementById('loading').innerHTML = `
+      <p style="color:var(--urgent);font-size:15px;text-align:center;padding:0 24px">
+        Couldn't load data — your token may have expired.<br><br>
+        <button onclick="localStorage.clear();location.reload()"
+          style="margin-top:8px;padding:8px 18px;border-radius:9px;border:none;
+          background:var(--geoff);color:white;cursor:pointer;font-size:14px;font-family:inherit">
+          Reset &amp; Try Again
+        </button>
+      </p>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
