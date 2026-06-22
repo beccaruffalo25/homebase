@@ -57,5 +57,12 @@
     }
   },
   "chores": [],
-  "todos": []
+  "todos": [
+    {
+      "id": "mqpq77hwsux",
+      "text": "find a dresser for geoff!",
+      "who": "Both",
+      "done": false
+    }
+  ]
 }
