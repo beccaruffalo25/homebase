@@ -17,6 +17,12 @@
       "text": "heb sushi",
       "cat": "Other",
       "done": false
+    },
+    {
+      "id": "mqpqbzoanwy",
+      "text": "chicken nuggets",
+      "cat": "",
+      "done": false
     }
   ],
   "mealPlan": {
