@@ -56,7 +56,14 @@
       "dinner": ""
     }
   },
-  "chores": [],
+  "chores": [
+    {
+      "id": "mqpq7ojbdhx",
+      "text": "unload dishwasher",
+      "who": "becca",
+      "done": false
+    }
+  ],
   "todos": [
     {
       "id": "mqpq77hwsux",
