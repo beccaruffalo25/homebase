@@ -458,18 +458,6 @@
   <p class="loading-txt">Loading Home Base...</p>
 </div>
 
-<!-- Setup modal -->
-<div id="setup-modal" class="overlay gone">
-  <div class="modal">
-    <h2>🏡 Welcome to Home Base</h2>
-    <p>Enter your GitHub Personal Access Token. It'll be saved on your device so you don't have to enter it again.</p>
-    <input type="password" id="tok-inp" class="ifield" style="width:100%" placeholder="ghp_..." autocomplete="off" />
-    <div class="modal-row">
-      <button id="tok-btn" class="btn btn-blue">Get Started →</button>
-    </div>
-  </div>
-</div>
-
 <!-- Meal edit modal -->
 <div id="meal-modal" class="overlay gone">
   <div class="modal">
@@ -510,8 +498,7 @@
 // ═══════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════
-const REPO    = 'beccaruffalo25/homebase';
-const API     = 'https://api.github.com';
+const DB      = 'https://homebase-c7dfa-default-rtdb.firebaseio.com';
 const DAYS    = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 const DSHORT  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MEALS   = ['breakfast','lunch','dinner'];
@@ -522,12 +509,10 @@ const MEAL_LBL = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
 // ═══════════════════════════════════════════════
 const S = {
   tab:       'becca',
-  token:     null,
-  shas:      {},
   data:      { becca: null, geoff: null, shared: null },
   mealEdit:  null,
   calState:  { year: new Date().getFullYear(), month: new Date().getMonth() },
-  calSel:    null   // selected date string 'YYYY-MM-DD'
+  calSel:    null
 };
 
 // ═══════════════════════════════════════════════
@@ -549,40 +534,25 @@ const defShared = () => ({
 });
 
 // ═══════════════════════════════════════════════
-//  GITHUB API
+//  FIREBASE API
 // ═══════════════════════════════════════════════
-const hdrs = () => ({
-  Authorization: `token ${S.token}`,
-  Accept: 'application/vnd.github.v3+json'
-});
-
-async function ghLoad(file, fallback) {
+async function fbGet(path) {
   try {
-    const r = await fetch(`${API}/repos/${REPO}/contents/data/${file}`, { headers: hdrs() });
-    if (!r.ok) { S.shas[file] = null; return fallback; }
-    const j = await r.json();
-    S.shas[file] = j.sha;
-    return JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\s/g,'')))));
-  } catch {
-    S.shas[file] = null;
-    return fallback;
-  }
+    const r = await fetch(`${DB}/${path}.json`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
 }
 
-async function ghSave(file, data) {
+async function fbSet(path, data) {
   showToast();
-  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-  const body = { message: `Update ${file}`, content };
-  if (S.shas[file]) body.sha = S.shas[file];
   try {
-    const r = await fetch(`${API}/repos/${REPO}/contents/data/${file}`, {
+    await fetch(`${DB}/${path}.json`, {
       method: 'PUT',
-      headers: { ...hdrs(), 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
     });
-    const j = await r.json();
-    if (j.content) S.shas[file] = j.content.sha;
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error('Save failed:', e); }
   hideToast();
 }
 
@@ -920,23 +890,23 @@ function bindPerson(p) {
 function addGoal(p, txt) {
   txt = txt.trim(); if (!txt) return;
   S.data[p].goals.push({id:uid(), text:txt, done:false});
-  ghSave(`${p}.json`, S.data[p]);
+  fbSet(p, S.data[p]);
   renderPerson(p);
 }
 function toggleGoal(p, id) {
   const g = S.data[p].goals.find(g=>g.id===id);
   if (g) g.done = !g.done;
-  ghSave(`${p}.json`, S.data[p]);
+  fbSet(p, S.data[p]);
   renderPerson(p);
 }
 function deleteGoal(p, id) {
   S.data[p].goals = S.data[p].goals.filter(g=>g.id!==id);
-  ghSave(`${p}.json`, S.data[p]);
+  fbSet(p, S.data[p]);
   renderPerson(p);
 }
 function clearGoals(p) {
   S.data[p].goals = S.data[p].goals.filter(g=>!g.done);
-  ghSave(`${p}.json`, S.data[p]);
+  fbSet(p, S.data[p]);
   renderPerson(p);
 }
 
@@ -946,18 +916,18 @@ function clearGoals(p) {
 function addTask(p, pri, txt) {
   txt = txt.trim(); if (!txt) return;
   S.data[p].tasks[pri].push({id:uid(), text:txt, done:false});
-  ghSave(`${p}.json`, S.data[p]);
+  fbSet(p, S.data[p]);
   renderPerson(p);
 }
 function toggleTask(p, pri, id) {
   const t = S.data[p].tasks[pri].find(t=>t.id===id);
   if (t) t.done = !t.done;
-  ghSave(`${p}.json`, S.data[p]);
+  fbSet(p, S.data[p]);
   renderPerson(p);
 }
 function deleteTask(p, pri, id) {
   S.data[p].tasks[pri] = S.data[p].tasks[pri].filter(t=>t.id!==id);
-  ghSave(`${p}.json`, S.data[p]);
+  fbSet(p, S.data[p]);
   renderPerson(p);
 }
 
@@ -1000,7 +970,7 @@ function showEventModal(defaultWho='both', defaultDate=null) {
     if (!title||!date||!time) return;
     if (!S.data.shared.events) S.data.shared.events = [];
     S.data.shared.events.push({id:uid(), title, date, time, location:loc, who});
-    ghSave('shared.json', S.data.shared);
+    fbSet('shared', S.data.shared);
     m.remove();
     renderPerson('becca');
     renderPerson('geoff');
@@ -1102,7 +1072,7 @@ function renderCalendar() {
 
 function deleteEvent(id) {
   S.data.shared.events = (S.data.shared.events||[]).filter(e=>e.id!==id);
-  ghSave('shared.json', S.data.shared);
+  fbSet('shared', S.data.shared);
   renderPerson('becca');
   renderPerson('geoff');
   renderShared();
@@ -1291,20 +1261,20 @@ function addGrocery() {
   const cat = document.getElementById('g-cat').value;
   if (!txt) return;
   S.data.shared.groceries.push({id:uid(), text:txt, cat, done:false});
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 function toggleGrocery(id) {
   const g = S.data.shared.groceries.find(g=>g.id===id);
   if (g) g.done = !g.done;
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 function deleteGrocery(id) {
   S.data.shared.groceries = S.data.shared.groceries.filter(g=>g.id!==id);
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 function clearGroceries() {
   S.data.shared.groceries = S.data.shared.groceries.filter(g=>!g.done);
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 
 // ═══════════════════════════════════════════════
@@ -1315,20 +1285,20 @@ function addTodo() {
   const who = document.getElementById('td-who').value;
   if (!txt) return;
   S.data.shared.todos.push({id:uid(), text:txt, who, done:false});
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 function toggleTodo(id) {
   const t = S.data.shared.todos.find(t=>t.id===id);
   if (t) t.done = !t.done;
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 function deleteTodo(id) {
   S.data.shared.todos = S.data.shared.todos.filter(t=>t.id!==id);
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 function clearTodos() {
   S.data.shared.todos = S.data.shared.todos.filter(t=>!t.done);
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 
 // ═══════════════════════════════════════════════
@@ -1339,20 +1309,20 @@ function addChore() {
   const who = document.getElementById('c-who').value;
   if (!txt) return;
   S.data.shared.chores.push({id:uid(), text:txt, who, done:false});
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 function toggleChore(id) {
   const c = S.data.shared.chores.find(c=>c.id===id);
   if (c) c.done = !c.done;
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 function deleteChore(id) {
   S.data.shared.chores = S.data.shared.chores.filter(c=>c.id!==id);
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 function resetChores() {
   S.data.shared.chores.forEach(c => c.done = false);
-  ghSave('shared.json', S.data.shared); renderShared();
+  fbSet('shared', S.data.shared); renderShared();
 }
 
 // ═══════════════════════════════════════════════
@@ -1377,7 +1347,7 @@ function saveMeal() {
   const val = document.getElementById('meal-inp').value.trim();
   if (!S.data.shared.mealPlan[day]) S.data.shared.mealPlan[day]={};
   S.data.shared.mealPlan[day][meal] = val;
-  ghSave('shared.json', S.data.shared);
+  fbSet('shared', S.data.shared);
   closeMealModal(); renderShared();
 }
 
@@ -1386,20 +1356,30 @@ function saveMeal() {
 // ═══════════════════════════════════════════════
 async function loadAll() {
   const [becca, geoff, shared] = await Promise.all([
-    ghLoad('becca.json',  defPerson('Becca')),
-    ghLoad('geoff.json',  defPerson('Geoff')),
-    ghLoad('shared.json', defShared())
+    fbGet('becca'), fbGet('geoff'), fbGet('shared')
   ]);
-  S.data.becca  = becca;
-  S.data.geoff  = geoff;
-  S.data.shared = shared;
+  S.data.becca  = becca  || defPerson('Becca');
+  S.data.geoff  = geoff  || defPerson('Geoff');
+  S.data.shared = shared || defShared();
   if (!S.data.becca.name)  S.data.becca.name  = 'Becca';
   if (!S.data.geoff.name)  S.data.geoff.name  = 'Geoff';
+  if (!S.data.shared.events) S.data.shared.events = [];
 
   renderPerson('becca');
   renderPerson('geoff');
   renderShared();
   startClock();
+
+  // auto-refresh every 45s so changes from other devices appear
+  setInterval(async () => {
+    const [b, g, sh] = await Promise.all([fbGet('becca'), fbGet('geoff'), fbGet('shared')]);
+    if (b)  S.data.becca  = b;
+    if (g)  S.data.geoff  = g;
+    if (sh) { S.data.shared = sh; if (!sh.events) S.data.shared.events = []; }
+    renderPerson('becca');
+    renderPerson('geoff');
+    renderShared();
+  }, 45000);
 
   // tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1426,40 +1406,17 @@ async function loadAll() {
 }
 
 async function init() {
-  let token = localStorage.getItem('homebase_token');
-
-  if (!token) {
-    document.getElementById('loading').classList.add('gone');
-    document.getElementById('setup-modal').classList.remove('gone');
-
-    const go = async () => {
-      token = document.getElementById('tok-inp').value.trim();
-      if (!token) return;
-      localStorage.setItem('homebase_token', token);
-      S.token = token;
-      document.getElementById('setup-modal').classList.add('gone');
-      document.getElementById('loading').classList.remove('gone');
-      await loadAll();
-    };
-
-    document.getElementById('tok-btn').addEventListener('click', go);
-    document.getElementById('tok-inp').addEventListener('keydown', e => { if(e.key==='Enter') go(); });
-    return;
-  }
-
-  S.token = token;
   try {
     await loadAll();
   } catch(err) {
     console.error(err);
-    localStorage.removeItem('homebase_token');
     document.getElementById('loading').innerHTML = `
       <p style="color:var(--urgent);font-size:15px;text-align:center;padding:0 24px">
-        Couldn't load data — your token may have expired.<br><br>
-        <button onclick="localStorage.clear();location.reload()"
+        Couldn't connect to database.<br><br>
+        <button onclick="location.reload()"
           style="margin-top:8px;padding:8px 18px;border-radius:9px;border:none;
           background:var(--geoff);color:white;cursor:pointer;font-size:14px;font-family:inherit">
-          Reset &amp; Try Again
+          Try Again
         </button>
       </p>`;
   }
