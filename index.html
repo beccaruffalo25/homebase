@@ -720,8 +720,10 @@ function weekAheadCard(p) {
       : dayEvts.map(e => `
         <div class="week-ev">
           <div class="week-ev-dot" style="background:${accent}"></div>
-          <span>${esc(e.title)}</span>
+          <span style="flex:1">${esc(e.title)}</span>
           <span class="week-ev-time">${esc(fmtTime(e.time))}</span>
+          <button class="x-btn" data-act="edit-ev" data-id="${e.id}" style="opacity:0.45;font-size:11px">✏️</button>
+          <button class="x-btn" data-act="del-ev"  data-id="${e.id}" style="opacity:0.45">✕</button>
         </div>`).join('');
 
     return `
@@ -760,10 +762,12 @@ function renderPerson(p) {
       <div class="ev-item">
         <div class="ev-time">${esc(fmtTime(e.time))}</div>
         <div class="ev-dot" style="background:${accent}"></div>
-        <div>
+        <div style="flex:1">
           <div class="ev-ttl">${esc(e.title)}</div>
           ${e.location ? `<div class="ev-loc">📍 ${esc(e.location)}</div>` : ''}
         </div>
+        <button class="x-btn" data-act="edit-ev" data-id="${e.id}" style="opacity:0.5;font-size:12px">✏️</button>
+        <button class="x-btn" data-act="del-ev"  data-id="${e.id}" style="opacity:0.5">✕</button>
       </div>`).join('');
 
   // goals
@@ -884,6 +888,8 @@ function bindPerson(p) {
     if (act==='task-del')         deleteTask(pp, pr, id);
     if (act==='clear-goals')      clearGoals(pp);
     if (act==='show-event-modal') showEventModal(pp);
+    if (act==='del-ev')           deleteEvent(id);
+    if (act==='edit-ev')          editEvent(id);
   });
 }
 
@@ -935,30 +941,33 @@ function deleteTask(p, pri, id) {
 }
 
 // ═══════════════════════════════════════════════
-//  EVENT MODAL (saves to shared.events)
+//  EVENT MODAL (create or edit)
 // ═══════════════════════════════════════════════
-function showEventModal(defaultWho='both', defaultDate=null) {
+function showEventModal(defaultWho='both', defaultDate=null, existing=null) {
   const old = document.getElementById('ev-modal');
   if (old) old.remove();
   const whoOpts = ['becca','geoff','both'].map(w =>
-    `<option value="${w}" ${w===defaultWho?'selected':''}>${w==='becca'?'Becca':w==='geoff'?'Geoff':'Both'}</option>`
+    `<option value="${w}" ${w===(existing?.who||defaultWho)?'selected':''}>${w==='becca'?'Becca':w==='geoff'?'Geoff':'Both'}</option>`
   ).join('');
+  const isEdit = !!existing;
   const m = document.createElement('div');
   m.id = 'ev-modal'; m.className = 'overlay';
   m.innerHTML = `
     <div class="modal">
-      <h2>Add Event</h2>
-      <p>Saves to the shared calendar and shows up on the right tabs.</p>
-      <input type="text" id="ev-title" class="ifield" style="width:100%;margin-bottom:8px" placeholder="Event title" />
+      <h2>${isEdit ? 'Edit Event' : 'Add Event'}</h2>
+      <p>${isEdit ? 'Update this event on the shared calendar.' : 'Saves to the shared calendar and shows up on the right tabs.'}</p>
+      <input type="text" id="ev-title" class="ifield" style="width:100%;margin-bottom:8px"
+        placeholder="Event title" value="${esc(existing?.title||'')}" />
       <div style="display:flex;gap:8px;margin-bottom:8px">
-        <input type="date" id="ev-date" class="ifield" style="flex:1" value="${defaultDate||today()}" />
-        <input type="time" id="ev-time" class="ifield" style="flex:1" value="09:00" />
+        <input type="date" id="ev-date" class="ifield" style="flex:1" value="${existing?.date||defaultDate||today()}" />
+        <input type="time" id="ev-time" class="ifield" style="flex:1" value="${existing?.time||'09:00'}" />
       </div>
-      <input type="text" id="ev-loc" class="ifield" style="width:100%;margin-bottom:8px" placeholder="Location (optional)" />
+      <input type="text" id="ev-loc" class="ifield" style="width:100%;margin-bottom:8px"
+        placeholder="Location (optional)" value="${esc(existing?.location||'')}" />
       <select id="ev-who" class="isel" style="width:100%">${whoOpts}</select>
       <div class="modal-row">
         <button id="ev-cancel" class="btn btn-ghost">Cancel</button>
-        <button id="ev-save"   class="btn btn-green">Add to Calendar</button>
+        <button id="ev-save" class="btn btn-green">${isEdit ? 'Save Changes' : 'Add to Calendar'}</button>
       </div>
     </div>`;
   document.body.appendChild(m);
@@ -972,7 +981,12 @@ function showEventModal(defaultWho='both', defaultDate=null) {
     const who   = document.getElementById('ev-who').value;
     if (!title||!date||!time) return;
     if (!S.data.shared.events) S.data.shared.events = [];
-    S.data.shared.events.push({id:uid(), title, date, time, location:loc, who});
+    if (isEdit) {
+      const idx = S.data.shared.events.findIndex(e=>e.id===existing.id);
+      if (idx !== -1) S.data.shared.events[idx] = { ...existing, title, date, time, location:loc, who };
+    } else {
+      S.data.shared.events.push({id:uid(), title, date, time, location:loc, who});
+    }
     fbSet('shared', S.data.shared);
     m.remove();
     renderPerson('becca');
@@ -980,6 +994,11 @@ function showEventModal(defaultWho='both', defaultDate=null) {
     renderShared();
   });
   document.getElementById('ev-title').focus();
+}
+
+function editEvent(id) {
+  const ev = (S.data.shared.events||[]).find(e=>e.id===id);
+  if (ev) showEventModal(ev.who, ev.date, ev);
 }
 
 // ═══════════════════════════════════════════════
