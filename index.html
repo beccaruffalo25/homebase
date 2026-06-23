@@ -538,7 +538,10 @@ const defShared = () => ({
 // ═══════════════════════════════════════════════
 async function fbGet(path) {
   try {
-    const r = await fetch(`${DB}/${path}.json`);
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 7000);
+    const r = await fetch(`${DB}/${path}.json`, { signal: ctrl.signal });
+    clearTimeout(t);
     if (!r.ok) return null;
     return await r.json();
   } catch { return null; }
@@ -1355,6 +1358,7 @@ function saveMeal() {
 //  INIT
 // ═══════════════════════════════════════════════
 async function loadAll() {
+async function loadAll() {
   const [becca, geoff, shared] = await Promise.all([
     fbGet('becca'), fbGet('geoff'), fbGet('shared')
   ]);
@@ -1363,24 +1367,20 @@ async function loadAll() {
   S.data.shared = shared || defShared();
   if (!S.data.becca.name)  S.data.becca.name  = 'Becca';
   if (!S.data.geoff.name)  S.data.geoff.name  = 'Geoff';
-  if (!S.data.shared.events) S.data.shared.events = [];
+  if (!S.data.shared.events)   S.data.shared.events   = [];
+  if (!S.data.shared.chores)   S.data.shared.chores   = [];
+  if (!S.data.shared.todos)    S.data.shared.todos    = [];
+  if (!S.data.shared.groceries) S.data.shared.groceries = [];
+  if (!S.data.shared.mealPlan) S.data.shared.mealPlan =
+    Object.fromEntries(DAYS.map(d=>[d,{breakfast:'',lunch:'',dinner:''}]));
 
-  renderPerson('becca');
-  renderPerson('geoff');
-  renderShared();
+  try { renderPerson('becca'); } catch(e) { console.error('render becca', e); }
+  try { renderPerson('geoff'); } catch(e) { console.error('render geoff', e); }
+  try { renderShared();        } catch(e) { console.error('render shared', e); }
   startClock();
+}
 
-  // auto-refresh every 45s so changes from other devices appear
-  setInterval(async () => {
-    const [b, g, sh] = await Promise.all([fbGet('becca'), fbGet('geoff'), fbGet('shared')]);
-    if (b)  S.data.becca  = b;
-    if (g)  S.data.geoff  = g;
-    if (sh) { S.data.shared = sh; if (!sh.events) S.data.shared.events = []; }
-    renderPerson('becca');
-    renderPerson('geoff');
-    renderShared();
-  }, 45000);
-
+function setupGlobalListeners() {
   // tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1391,7 +1391,6 @@ async function loadAll() {
       S.tab = btn.dataset.t;
     });
   });
-
   // meal modal
   document.getElementById('meal-cancel').addEventListener('click', closeMealModal);
   document.getElementById('meal-save').addEventListener('click', saveMeal);
@@ -1401,8 +1400,6 @@ async function loadAll() {
   document.getElementById('meal-inp').addEventListener('keydown', e => {
     if (e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveMeal();}
   });
-
-  document.getElementById('loading').classList.add('gone');
 }
 
 async function init() {
@@ -1410,15 +1407,14 @@ async function init() {
     await loadAll();
   } catch(err) {
     console.error(err);
-    document.getElementById('loading').innerHTML = `
-      <p style="color:var(--urgent);font-size:15px;text-align:center;padding:0 24px">
-        Couldn't connect to database.<br><br>
-        <button onclick="location.reload()"
-          style="margin-top:8px;padding:8px 18px;border-radius:9px;border:none;
-          background:var(--geoff);color:white;cursor:pointer;font-size:14px;font-family:inherit">
-          Try Again
-        </button>
-      </p>`;
+    // render with defaults so page is usable even offline
+    try { renderPerson('becca'); } catch{}
+    try { renderPerson('geoff'); } catch{}
+    try { renderShared();        } catch{}
+    startClock();
+  } finally {
+    document.getElementById('loading').classList.add('gone');
+    setupGlobalListeners();
   }
 }
 
