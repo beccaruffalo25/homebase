@@ -1358,7 +1358,6 @@ function saveMeal() {
 //  INIT
 // ═══════════════════════════════════════════════
 async function loadAll() {
-async function loadAll() {
   const [becca, geoff, shared] = await Promise.all([
     fbGet('becca'), fbGet('geoff'), fbGet('shared')
   ]);
