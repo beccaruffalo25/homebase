@@ -1,30 +1,6 @@
 {
-  "groceries": [
-    {
-      "id": "mqpq663cqfm",
-      "text": "brown sugar",
-      "cat": "Pantry",
-      "done": false
-    },
-    {
-      "id": "mqpq6ecxa7e",
-      "text": "oat milk",
-      "cat": "Dairy",
-      "done": false
-    },
-    {
-      "id": "mqpq6odcsof",
-      "text": "heb sushi",
-      "cat": "Other",
-      "done": false
-    },
-    {
-      "id": "mqpqc9hqai7",
-      "text": "chicken nuggets",
-      "cat": "Protein",
-      "done": false
-    }
-  ],
+  "events": [],
+  "groceries": [],
   "mealPlan": {
     "sunday": {
       "breakfast": "",
@@ -32,24 +8,24 @@
       "dinner": ""
     },
     "monday": {
-      "breakfast": "peanut butter & banana toast",
-      "lunch": "chicken nuggets & veggies",
-      "dinner": "pick up something easy!"
+      "breakfast": "",
+      "lunch": "",
+      "dinner": ""
     },
     "tuesday": {
-      "breakfast": "peanut butter & banana toast",
-      "lunch": "chicken salad sandwich & chips",
-      "dinner": "teriyaki chicken with zucchini & rice"
+      "breakfast": "",
+      "lunch": "",
+      "dinner": ""
     },
     "wednesday": {
-      "breakfast": "peanut butter & banana toast",
-      "lunch": "chicken salad sandwich & chips",
-      "dinner": "teriyaki chicken with zucchini & rice"
+      "breakfast": "",
+      "lunch": "",
+      "dinner": ""
     },
     "thursday": {
-      "breakfast": "peanut butter & banana toast",
-      "lunch": "chicken salad sandwich & chips",
-      "dinner": "(defrosted) steak tacos"
+      "breakfast": "",
+      "lunch": "",
+      "dinner": ""
     },
     "friday": {
       "breakfast": "",
@@ -62,26 +38,6 @@
       "dinner": ""
     }
   },
-  "chores": [
-    {
-      "id": "mqpq7ojbdhx",
-      "text": "unload dishwasher",
-      "who": "becca",
-      "done": false
-    }
-  ],
-  "todos": [
-    {
-      "id": "mqpq77hwsux",
-      "text": "find a dresser for geoff!",
-      "who": "Both",
-      "done": false
-    },
-    {
-      "id": "mqpq7f8u5zg",
-      "text": "clean out guest closet",
-      "who": "Becca",
-      "done": false
-    }
-  ]
+  "chores": [],
+  "todos": []
 }
