@@ -290,6 +290,54 @@
     .meal-txt   { font-size: 12px; color: var(--text); line-height: 1.3; }
     .meal-slot.empty .meal-txt { color: var(--ter); font-style: italic; }
 
+    /* ── CALENDAR ──────────────────────────────────────────── */
+    .cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .cal-month-lbl { font-size:15px; font-weight:600; letter-spacing:-0.2px; }
+    .cal-grid {
+      display:grid; grid-template-columns:repeat(7,1fr);
+      gap:2px; margin-bottom:12px;
+    }
+    .cal-dow {
+      font-size:11px; font-weight:600; text-align:center; color:var(--sub);
+      padding:4px 0; text-transform:uppercase; letter-spacing:0.3px;
+    }
+    .cal-cell {
+      min-height:68px; padding:5px 4px; border-radius:8px;
+      cursor:pointer; transition:background 0.1s; position:relative;
+    }
+    .cal-cell:hover { background:var(--bg); }
+    .cal-cell.other-month { opacity:0.3; pointer-events:none; }
+    .cal-cell.is-today { background:rgba(0,113,227,0.07); }
+    .cal-cell.is-sel   { background:rgba(48,176,80,0.1); outline:2px solid var(--shared); outline-offset:-2px; }
+    .cal-day-num { font-size:13px; font-weight:500; margin-bottom:3px; text-align:right; color:var(--sub); }
+    .cal-cell.is-today .cal-day-num { color:var(--geoff); font-weight:700; }
+    .cal-dots { display:flex; flex-wrap:wrap; gap:2px; }
+    .cal-dot  { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+    .cal-chip {
+      font-size:10px; font-weight:500; padding:1px 5px; border-radius:4px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      margin-bottom:2px; display:block; max-width:100%;
+    }
+    .cal-sel-panel {
+      border-top:1px solid var(--border); padding-top:14px; margin-top:4px;
+    }
+    .cal-sel-date {
+      font-size:14px; font-weight:600; margin-bottom:10px; color:var(--text);
+    }
+    .cal-ev-row {
+      display:flex; align-items:center; gap:9px;
+      padding:9px 10px; background:var(--bg); border-radius:9px; margin-bottom:5px;
+    }
+    .cal-ev-time { font-size:12px; color:var(--sub); min-width:60px; flex-shrink:0; font-weight:500; }
+    .cal-ev-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .cal-ev-ttl  { font-size:14px; font-weight:500; }
+    .cal-ev-loc  { font-size:12px; color:var(--sub); margin-top:1px; }
+    .cal-ev-info { flex:1; min-width:0; }
+    .link-btn {
+      background:none; border:none; color:var(--shared); font-size:inherit;
+      cursor:pointer; font-family:inherit; text-decoration:underline; padding:0;
+    }
+
     /* ── SHARED HEADER ────────────────────────────────────── */
     .shared-hdr { margin-bottom: 24px; }
     .shared-ttl { font-size: 30px; font-weight: 700; letter-spacing: -0.7px; margin-bottom: 4px; }
@@ -473,11 +521,13 @@ const MEAL_LBL = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
 //  STATE
 // ═══════════════════════════════════════════════
 const S = {
-  tab:      'becca',
-  token:    null,
-  shas:     {},
-  data:     { becca: null, geoff: null, shared: null },
-  mealEdit: null
+  tab:       'becca',
+  token:     null,
+  shas:      {},
+  data:      { becca: null, geoff: null, shared: null },
+  mealEdit:  null,
+  calState:  { year: new Date().getFullYear(), month: new Date().getMonth() },
+  calSel:    null   // selected date string 'YYYY-MM-DD'
 };
 
 // ═══════════════════════════════════════════════
@@ -491,6 +541,7 @@ const defPerson = name => ({
 });
 
 const defShared = () => ({
+  events:    [],
   groceries: [],
   mealPlan: Object.fromEntries(DAYS.map(d => [d, { breakfast:'', lunch:'', dinner:'' }])),
   chores:  [],
@@ -676,16 +727,18 @@ function maybeConfetti(p) {
 // ═══════════════════════════════════════════════
 function weekAheadCard(p) {
   const accent  = p==='becca' ? 'var(--becca)' : 'var(--geoff)';
-  const evts    = S.data[p].events || [];
+  const allEvts = S.data.shared.events || [];
   const todayD  = new Date();
   todayD.setHours(0,0,0,0);
 
   const rows = Array.from({length:7}, (_,i) => {
     const d = new Date(todayD);
     d.setDate(todayD.getDate()+i);
-    const ds    = d.toISOString().slice(0,10);
+    const ds      = d.toISOString().slice(0,10);
     const isToday = i===0;
-    const dayEvts = evts.filter(e=>e.date===ds).sort((a,b)=>a.time.localeCompare(b.time));
+    const dayEvts = allEvts
+      .filter(e=>e.date===ds && (e.who===p||e.who==='both'))
+      .sort((a,b)=>a.time.localeCompare(b.time));
     const dayName = d.toLocaleDateString('en-US',{weekday:'short'});
     const dayDate = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 
@@ -724,8 +777,9 @@ function renderPerson(p) {
   const accent = p === 'becca' ? 'var(--becca)' : 'var(--geoff)';
   const btnCls = p === 'becca' ? 'btn-pink' : 'btn-blue';
 
-  // schedule
-  const evts = (d.events||[]).filter(e => e.date === today())
+  // schedule — pull from shared events filtered by person
+  const evts = (S.data.shared.events||[])
+    .filter(e => (e.who===p||e.who==='both') && e.date===today())
     .sort((a,b)=>a.time.localeCompare(b.time));
   const schedHTML = evts.length === 0
     ? `<div class="empty"><div class="empty-icon">✨</div>Clear day ahead</div>`
@@ -908,24 +962,30 @@ function deleteTask(p, pri, id) {
 }
 
 // ═══════════════════════════════════════════════
-//  EVENT MODAL
+//  EVENT MODAL (saves to shared.events)
 // ═══════════════════════════════════════════════
-function showEventModal(p) {
+function showEventModal(defaultWho='both', defaultDate=null) {
   const old = document.getElementById('ev-modal');
   if (old) old.remove();
+  const whoOpts = ['becca','geoff','both'].map(w =>
+    `<option value="${w}" ${w===defaultWho?'selected':''}>${w==='becca'?'Becca':w==='geoff'?'Geoff':'Both'}</option>`
+  ).join('');
   const m = document.createElement('div');
   m.id = 'ev-modal'; m.className = 'overlay';
   m.innerHTML = `
     <div class="modal">
       <h2>Add Event</h2>
-      <p>Add something to ${p === 'becca' ? 'your' : "Geoff's"} schedule.</p>
-      <input type="text"  id="ev-title" class="ifield" style="width:100%;margin-bottom:8px" placeholder="Event title" />
-      <input type="date"  id="ev-date"  class="ifield" style="width:100%;margin-bottom:8px" value="${today()}" />
-      <input type="time"  id="ev-time"  class="ifield" style="width:100%;margin-bottom:8px" value="09:00" />
-      <input type="text"  id="ev-loc"   class="ifield" style="width:100%" placeholder="Location (optional)" />
+      <p>Saves to the shared calendar and shows up on the right tabs.</p>
+      <input type="text" id="ev-title" class="ifield" style="width:100%;margin-bottom:8px" placeholder="Event title" />
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="date" id="ev-date" class="ifield" style="flex:1" value="${defaultDate||today()}" />
+        <input type="time" id="ev-time" class="ifield" style="flex:1" value="09:00" />
+      </div>
+      <input type="text" id="ev-loc" class="ifield" style="width:100%;margin-bottom:8px" placeholder="Location (optional)" />
+      <select id="ev-who" class="isel" style="width:100%">${whoOpts}</select>
       <div class="modal-row">
         <button id="ev-cancel" class="btn btn-ghost">Cancel</button>
-        <button id="ev-save"   class="btn ${p==='becca'?'btn-pink':'btn-blue'}">Add Event</button>
+        <button id="ev-save"   class="btn btn-green">Add to Calendar</button>
       </div>
     </div>`;
   document.body.appendChild(m);
@@ -936,14 +996,116 @@ function showEventModal(p) {
     const date  = document.getElementById('ev-date').value;
     const time  = document.getElementById('ev-time').value;
     const loc   = document.getElementById('ev-loc').value.trim();
+    const who   = document.getElementById('ev-who').value;
     if (!title||!date||!time) return;
-    if (!S.data[p].events) S.data[p].events = [];
-    S.data[p].events.push({id:uid(), title, date, time, location:loc});
-    ghSave(`${p}.json`, S.data[p]);
+    if (!S.data.shared.events) S.data.shared.events = [];
+    S.data.shared.events.push({id:uid(), title, date, time, location:loc, who});
+    ghSave('shared.json', S.data.shared);
     m.remove();
-    renderPerson(p);
+    renderPerson('becca');
+    renderPerson('geoff');
+    renderShared();
   });
   document.getElementById('ev-title').focus();
+}
+
+// ═══════════════════════════════════════════════
+//  SHARED CALENDAR
+// ═══════════════════════════════════════════════
+function renderCalendar() {
+  const events = S.data.shared.events || [];
+  const { year, month } = S.calState;
+  const todayStr   = today();
+  const firstDay   = new Date(year, month, 1);
+  const daysInMo   = new Date(year, month+1, 0).getDate();
+  const startDow   = firstDay.getDay();
+  const prevLast   = new Date(year, month, 0).getDate();
+  const monthLabel = firstDay.toLocaleDateString('en-US',{month:'long', year:'numeric'});
+
+  // build 42 cells (6 rows × 7 cols)
+  const cells = [];
+  for (let i=0; i<startDow; i++) {
+    const day = prevLast - startDow + i + 1;
+    cells.push({ day, dateStr: new Date(year,month-1,day).toISOString().slice(0,10), other:true });
+  }
+  for (let d=1; d<=daysInMo; d++) {
+    cells.push({ day:d, dateStr: new Date(year,month,d).toISOString().slice(0,10), other:false });
+  }
+  while (cells.length < 42) {
+    const d = cells.length - startDow - daysInMo + 1;
+    cells.push({ day:d, dateStr: new Date(year,month+1,d).toISOString().slice(0,10), other:true });
+  }
+
+  const cellsHTML = cells.map(c => {
+    const dayEvts   = events.filter(e=>e.date===c.dateStr);
+    const isToday   = c.dateStr===todayStr;
+    const isSel     = c.dateStr===S.calSel;
+    const chipsHTML = dayEvts.slice(0,2).map(e => {
+      const col = e.who==='becca'?'var(--becca)':e.who==='geoff'?'var(--geoff)':'var(--shared)';
+      const bg  = e.who==='becca'?'var(--becca-bg)':e.who==='geoff'?'var(--geoff-bg)':'var(--shared-bg)';
+      return `<span class="cal-chip" style="color:${col};background:${bg}">${esc(e.title)}</span>`;
+    }).join('') + (dayEvts.length>2 ? `<span style="font-size:10px;color:var(--sub)">+${dayEvts.length-2} more</span>` : '');
+
+    return `<div class="cal-cell ${c.other?'other-month':''} ${isToday?'is-today':''} ${isSel?'is-sel':''}"
+      data-act="cal-day" data-date="${c.dateStr}">
+      <div class="cal-day-num">${c.day}</div>
+      ${chipsHTML}
+    </div>`;
+  }).join('');
+
+  // selected day panel
+  let selPanel = '';
+  if (S.calSel) {
+    const selEvts = events.filter(e=>e.date===S.calSel).sort((a,b)=>a.time.localeCompare(b.time));
+    const selLabel = new Date(S.calSel+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    const evtRows  = selEvts.length === 0
+      ? `<div class="week-free" style="padding:8px 0">No events — <button class="link-btn" data-act="add-ev-sel">add one</button></div>`
+      : selEvts.map(e => {
+          const col    = e.who==='becca'?'var(--becca)':e.who==='geoff'?'var(--geoff)':'var(--shared)';
+          const pilCls = e.who==='becca'?'pill-becca':e.who==='geoff'?'pill-geoff':'pill-both';
+          const pilTxt = e.who==='becca'?'Becca':e.who==='geoff'?'Geoff':'Both';
+          return `<div class="cal-ev-row">
+            <div class="cal-ev-time">${fmtTime(e.time)||'All day'}</div>
+            <div class="cal-ev-dot" style="background:${col}"></div>
+            <div class="cal-ev-info">
+              <div class="cal-ev-ttl">${esc(e.title)}</div>
+              ${e.location?`<div class="cal-ev-loc">📍 ${esc(e.location)}</div>`:''}
+            </div>
+            <span class="assignee-pill ${pilCls}">${pilTxt}</span>
+            <button class="x-btn" data-act="del-ev" data-id="${e.id}" style="opacity:0.7">✕</button>
+          </div>`;
+        }).join('');
+
+    selPanel = `<div class="cal-sel-panel">
+      <div class="cal-sel-date">${selLabel}</div>
+      ${evtRows}
+    </div>`;
+  }
+
+  return `<div class="card" style="margin-bottom:16px">
+    <div class="card-hdr">
+      <span class="card-ttl">📅 Shared Calendar</span>
+      <button class="btn btn-green btn-sm" data-act="add-ev-modal">+ Add Event</button>
+    </div>
+    <div class="cal-nav">
+      <button class="btn btn-ghost btn-sm" data-act="cal-prev">← Prev</button>
+      <div class="cal-month-lbl">${monthLabel}</div>
+      <button class="btn btn-ghost btn-sm" data-act="cal-next">Next →</button>
+    </div>
+    <div class="cal-grid">
+      ${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="cal-dow">${d}</div>`).join('')}
+      ${cellsHTML}
+    </div>
+    ${selPanel}
+  </div>`;
+}
+
+function deleteEvent(id) {
+  S.data.shared.events = (S.data.shared.events||[]).filter(e=>e.id!==id);
+  ghSave('shared.json', S.data.shared);
+  renderPerson('becca');
+  renderPerson('geoff');
+  renderShared();
 }
 
 // ═══════════════════════════════════════════════
@@ -1005,6 +1167,7 @@ function renderShared() {
       <div class="shared-ttl">Our <span>Home Base</span> 🏡</div>
       <div class="dateline">${fmtDate()}</div>
     </div>
+    ${renderCalendar()}
     <div class="g2">
       <div class="card">
         <div class="card-hdr">
@@ -1082,18 +1245,40 @@ function bindShared() {
     if (!el) return;
     const act = el.dataset.act;
     const id  = el.dataset.id;
-    if (act==='g-add')    addGrocery();
-    if (act==='g-toggle') toggleGrocery(id);
-    if (act==='g-del')    deleteGrocery(id);
-    if (act==='g-clear')  clearGroceries();
-    if (act==='td-add')   addTodo();
+    // calendar
+    if (act==='cal-prev') {
+      S.calState.month--;
+      if (S.calState.month < 0) { S.calState.month=11; S.calState.year--; }
+      S.calSel = null; renderShared(); return;
+    }
+    if (act==='cal-next') {
+      S.calState.month++;
+      if (S.calState.month > 11) { S.calState.month=0; S.calState.year++; }
+      S.calSel = null; renderShared(); return;
+    }
+    if (act==='cal-day') {
+      S.calSel = S.calSel===el.dataset.date ? null : el.dataset.date;
+      renderShared(); return;
+    }
+    if (act==='add-ev-modal') { showEventModal('both'); return; }
+    if (act==='add-ev-sel')   { showEventModal('both', S.calSel); return; }
+    if (act==='del-ev')       { deleteEvent(id); return; }
+    // grocery
+    if (act==='g-add')     addGrocery();
+    if (act==='g-toggle')  toggleGrocery(id);
+    if (act==='g-del')     deleteGrocery(id);
+    if (act==='g-clear')   clearGroceries();
+    // todos
+    if (act==='td-add')    addTodo();
     if (act==='td-toggle') toggleTodo(id);
-    if (act==='td-del')   deleteTodo(id);
-    if (act==='td-clear') clearTodos();
-    if (act==='c-add')    addChore();
-    if (act==='c-toggle') toggleChore(id);
-    if (act==='c-del')    deleteChore(id);
-    if (act==='c-reset')  resetChores();
+    if (act==='td-del')    deleteTodo(id);
+    if (act==='td-clear')  clearTodos();
+    // chores
+    if (act==='c-add')     addChore();
+    if (act==='c-toggle')  toggleChore(id);
+    if (act==='c-del')     deleteChore(id);
+    if (act==='c-reset')   resetChores();
+    // meals
     if (act==='meal-edit') openMealModal(el.dataset.day, el.dataset.meal);
   });
 }
