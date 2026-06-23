@@ -1,5 +1,14 @@
 {
-  "events": [],
+  "events": [
+    {
+      "id": "mqq4j8m10ky",
+      "title": "Becca Arrives!",
+      "date": "2026-07-03",
+      "time": "11:00",
+      "location": "Ohare Hairport",
+      "who": "both"
+    }
+  ],
   "groceries": [],
   "mealPlan": {
     "sunday": {
