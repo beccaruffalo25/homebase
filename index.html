@@ -579,7 +579,11 @@ function hideToast() {
 // ═══════════════════════════════════════════════
 const uid   = () => Date.now().toString(36) + Math.random().toString(36).slice(2,5);
 const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const today = () => new Date().toISOString().slice(0,10);
+// Always use local date (toISOString is UTC — wrong after ~7pm in US timezones)
+function localDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+const today = () => localDateStr(new Date());
 
 // Firebase stores arrays as {0:…,1:…} — convert back to real arrays
 function ensureArr(val) {
@@ -723,7 +727,7 @@ function weekAheadCard(p) {
   const rows = Array.from({length:7}, (_,i) => {
     const d = new Date(todayD);
     d.setDate(todayD.getDate()+i);
-    const ds      = d.toISOString().slice(0,10);
+    const ds      = localDateStr(d);
     const isToday = i===0;
     const dayEvts = allEvts
       .filter(e=>e.date===ds && (e.who===p||e.who==='both'))
@@ -1038,14 +1042,14 @@ function renderCalendar() {
   const cells = [];
   for (let i=0; i<startDow; i++) {
     const day = prevLast - startDow + i + 1;
-    cells.push({ day, dateStr: new Date(year,month-1,day).toISOString().slice(0,10), other:true });
+    cells.push({ day, dateStr: localDateStr(new Date(year,month-1,day)), other:true });
   }
   for (let d=1; d<=daysInMo; d++) {
-    cells.push({ day:d, dateStr: new Date(year,month,d).toISOString().slice(0,10), other:false });
+    cells.push({ day:d, dateStr: localDateStr(new Date(year,month,d)), other:false });
   }
   while (cells.length < 42) {
     const d = cells.length - startDow - daysInMo + 1;
-    cells.push({ day:d, dateStr: new Date(year,month+1,d).toISOString().slice(0,10), other:true });
+    cells.push({ day:d, dateStr: localDateStr(new Date(year,month+1,d)), other:true });
   }
 
   const cellsHTML = cells.map(c => {
