@@ -514,7 +514,8 @@ const S = {
   data:      { becca: null, geoff: null, shared: null },
   mealEdit:  null,
   calState:  { year: new Date().getFullYear(), month: new Date().getMonth() },
-  calSel:    null
+  calSel:    null,
+  confettiFired: { becca: false, geoff: false }
 };
 
 // ═══════════════════════════════════════════════
@@ -684,7 +685,13 @@ function progressCard(p) {
 
 function maybeConfetti(p) {
   const cb = document.getElementById(`cb-${p}`);
-  if (!cb) return;
+  if (!cb) {
+    // tasks are not all done — reset so confetti can fire again next time
+    S.confettiFired[p] = false;
+    return;
+  }
+  if (S.confettiFired[p]) return;
+  S.confettiFired[p] = true;
   const colors = ['#ff2d55','#ff9500','#34c759','#0071e3','#af52de','#ffcc00'];
   for (let i=0; i<24; i++) {
     const el = document.createElement('div');
