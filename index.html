@@ -578,6 +578,13 @@ const uid   = () => Date.now().toString(36) + Math.random().toString(36).slice(2
 const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const today = () => new Date().toISOString().slice(0,10);
 
+// Firebase stores arrays as {0:…,1:…} — convert back to real arrays
+function ensureArr(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  return Object.keys(val).sort((a,b)=>Number(a)-Number(b)).map(k=>val[k]);
+}
+
 function greeting(name, accent) {
   const h = new Date().getHours();
   const msg = h >= 5 && h < 12  ? `Good morning, <b style="color:${accent}">${esc(name)}</b> ☀️`
@@ -988,6 +995,10 @@ function showEventModal(defaultWho='both', defaultDate=null, existing=null) {
       S.data.shared.events.push({id:uid(), title, date, time, location:loc, who});
     }
     fbSet('shared', S.data.shared);
+    // navigate calendar to the event's month and select the day
+    const evDate = new Date(date + 'T12:00:00');
+    S.calState = { year: evDate.getFullYear(), month: evDate.getMonth() };
+    S.calSel   = date;
     m.remove();
     renderPerson('becca');
     renderPerson('geoff');
@@ -1386,21 +1397,21 @@ async function loadAll() {
   if (!S.data.becca.name)  S.data.becca.name  = 'Becca';
   if (!S.data.geoff.name)  S.data.geoff.name  = 'Geoff';
 
-  // Firebase drops empty arrays — restore them
+  // Firebase strips empty arrays and returns objects for non-empty ones — restore properly
   for (const p of ['becca','geoff']) {
     const d = S.data[p];
-    if (!d.tasks)              d.tasks    = {};
-    if (!Array.isArray(d.tasks.urgent)) d.tasks.urgent = [];
-    if (!Array.isArray(d.tasks.medium)) d.tasks.medium = [];
-    if (!Array.isArray(d.tasks.low))    d.tasks.low    = [];
-    if (!Array.isArray(d.goals))        d.goals        = [];
-    if (!Array.isArray(d.events))       d.events       = [];
+    if (!d.tasks) d.tasks = {};
+    d.tasks.urgent = ensureArr(d.tasks.urgent);
+    d.tasks.medium = ensureArr(d.tasks.medium);
+    d.tasks.low    = ensureArr(d.tasks.low);
+    d.goals        = ensureArr(d.goals);
+    d.events       = ensureArr(d.events);
   }
   const sh = S.data.shared;
-  if (!Array.isArray(sh.events))    sh.events    = [];
-  if (!Array.isArray(sh.groceries)) sh.groceries = [];
-  if (!Array.isArray(sh.chores))    sh.chores    = [];
-  if (!Array.isArray(sh.todos))     sh.todos     = [];
+  sh.events    = ensureArr(sh.events);
+  sh.groceries = ensureArr(sh.groceries);
+  sh.chores    = ensureArr(sh.chores);
+  sh.todos     = ensureArr(sh.todos);
   if (!sh.mealPlan) sh.mealPlan =
     Object.fromEntries(DAYS.map(d=>[d,{breakfast:'',lunch:'',dinner:''}]));
 
@@ -1437,18 +1448,18 @@ function setupGlobalListeners() {
     for (const [key, fresh] of [['becca',b],['geoff',g]]) {
       if (!fresh) continue;
       if (!fresh.tasks) fresh.tasks = {};
-      if (!Array.isArray(fresh.tasks.urgent)) fresh.tasks.urgent = [];
-      if (!Array.isArray(fresh.tasks.medium)) fresh.tasks.medium = [];
-      if (!Array.isArray(fresh.tasks.low))    fresh.tasks.low    = [];
-      if (!Array.isArray(fresh.goals))        fresh.goals        = [];
-      if (!Array.isArray(fresh.events))       fresh.events       = [];
+      fresh.tasks.urgent = ensureArr(fresh.tasks.urgent);
+      fresh.tasks.medium = ensureArr(fresh.tasks.medium);
+      fresh.tasks.low    = ensureArr(fresh.tasks.low);
+      fresh.goals        = ensureArr(fresh.goals);
+      fresh.events       = ensureArr(fresh.events);
       S.data[key] = fresh;
     }
     if (sh) {
-      if (!Array.isArray(sh.events))    sh.events    = [];
-      if (!Array.isArray(sh.groceries)) sh.groceries = [];
-      if (!Array.isArray(sh.chores))    sh.chores    = [];
-      if (!Array.isArray(sh.todos))     sh.todos     = [];
+      sh.events    = ensureArr(sh.events);
+      sh.groceries = ensureArr(sh.groceries);
+      sh.chores    = ensureArr(sh.chores);
+      sh.todos     = ensureArr(sh.todos);
       if (!sh.mealPlan) sh.mealPlan =
         Object.fromEntries(DAYS.map(d=>[d,{breakfast:'',lunch:'',dinner:''}]));
       S.data.shared = sh;
