@@ -184,7 +184,9 @@
     .task-row:hover .x-btn,
     .grocery-row:hover .x-btn,
     .chore-row:hover .x-btn,
-    .todo-row:hover .x-btn { opacity: 1; }
+    .todo-row:hover .x-btn,
+    .ev-item:hover .x-btn,
+    .week-ev:hover .x-btn { opacity: 1; }
     .prog-wrap { margin-top: 12px; }
     .prog-bar  { height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
     .prog-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
@@ -729,8 +731,8 @@ function weekAheadCard(p) {
           <div class="week-ev-dot" style="background:${accent}"></div>
           <span style="flex:1">${esc(e.title)}</span>
           <span class="week-ev-time">${esc(fmtTime(e.time))}</span>
-          <button class="x-btn" data-act="edit-ev" data-id="${e.id}" style="opacity:0.45;font-size:11px">✏️</button>
-          <button class="x-btn" data-act="del-ev"  data-id="${e.id}" style="opacity:0.45">✕</button>
+          <button class="x-btn" data-act="edit-ev" data-id="${e.id}" style="font-size:11px">✏️</button>
+          <button class="x-btn" data-act="del-ev"  data-id="${e.id}">✕</button>
         </div>`).join('');
 
     return `
@@ -773,8 +775,8 @@ function renderPerson(p) {
           <div class="ev-ttl">${esc(e.title)}</div>
           ${e.location ? `<div class="ev-loc">📍 ${esc(e.location)}</div>` : ''}
         </div>
-        <button class="x-btn" data-act="edit-ev" data-id="${e.id}" style="opacity:0.5;font-size:12px">✏️</button>
-        <button class="x-btn" data-act="del-ev"  data-id="${e.id}" style="opacity:0.5">✕</button>
+        <button class="x-btn" data-act="edit-ev" data-id="${e.id}" style="font-size:12px">✏️</button>
+        <button class="x-btn" data-act="del-ev"  data-id="${e.id}">✕</button>
       </div>`).join('');
 
   // goals
@@ -1075,7 +1077,8 @@ function renderCalendar() {
               ${e.location?`<div class="cal-ev-loc">📍 ${esc(e.location)}</div>`:''}
             </div>
             <span class="assignee-pill ${pilCls}">${pilTxt}</span>
-            <button class="x-btn" data-act="del-ev" data-id="${e.id}" style="opacity:0.7">✕</button>
+            <button class="x-btn" data-act="edit-ev" data-id="${e.id}" style="font-size:12px">✏️</button>
+            <button class="x-btn" data-act="del-ev"  data-id="${e.id}" style="opacity:0.7">✕</button>
           </div>`;
         }).join('');
 
@@ -1266,6 +1269,7 @@ function bindShared() {
     if (act==='add-ev-modal') { showEventModal('both'); return; }
     if (act==='add-ev-sel')   { showEventModal('both', S.calSel); return; }
     if (act==='del-ev')       { deleteEvent(id); return; }
+    if (act==='edit-ev')      { editEvent(id); return; }
     // grocery
     if (act==='g-add')     addGrocery();
     if (act==='g-toggle')  toggleGrocery(id);
@@ -1405,7 +1409,7 @@ async function loadAll() {
     d.tasks.medium = ensureArr(d.tasks.medium);
     d.tasks.low    = ensureArr(d.tasks.low);
     d.goals        = ensureArr(d.goals);
-    d.events       = ensureArr(d.events);
+    delete d.events; // events moved to shared — remove vestigial field
   }
   const sh = S.data.shared;
   sh.events    = ensureArr(sh.events);
@@ -1452,7 +1456,7 @@ function setupGlobalListeners() {
       fresh.tasks.medium = ensureArr(fresh.tasks.medium);
       fresh.tasks.low    = ensureArr(fresh.tasks.low);
       fresh.goals        = ensureArr(fresh.goals);
-      fresh.events       = ensureArr(fresh.events);
+      delete fresh.events;
       S.data[key] = fresh;
     }
     if (sh) {
