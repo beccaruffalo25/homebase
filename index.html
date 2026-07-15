@@ -876,15 +876,13 @@ function renderPerson(p) {
 function bindPerson(p) {
   const pane = document.getElementById(`pane-${p}`);
 
-  // goals: add
+  // keydown/click on freshly-created inputs — safe to re-attach each render
   pane.querySelector('.goal-inp').addEventListener('keydown', e => {
     if (e.key==='Enter') addGoal(p, e.target.value);
   });
   pane.querySelector('.goal-add').addEventListener('click', () => {
     addGoal(p, pane.querySelector('.goal-inp').value);
   });
-
-  // tasks: add
   pane.querySelectorAll('.task-inp').forEach(inp => {
     inp.addEventListener('keydown', e => { if (e.key==='Enter') addTask(p, inp.dataset.pri, inp.value); });
   });
@@ -893,24 +891,7 @@ function bindPerson(p) {
       addTask(p, btn.dataset.pri, pane.querySelector(`.task-inp[data-pri="${btn.dataset.pri}"]`).value);
     });
   });
-
-  // delegated actions
-  pane.addEventListener('click', e => {
-    const el  = e.target.closest('[data-act]');
-    if (!el) return;
-    const act = el.dataset.act;
-    const id  = el.dataset.id;
-    const pr  = el.dataset.pri;
-    const pp  = el.dataset.p;
-    if (act==='goal-toggle')      toggleGoal(pp, id);
-    if (act==='goal-del')         deleteGoal(pp, id);
-    if (act==='task-toggle')      toggleTask(pp, pr, id);
-    if (act==='task-del')         deleteTask(pp, pr, id);
-    if (act==='clear-goals')      clearGoals(pp);
-    if (act==='show-event-modal') showEventModal(pp);
-    if (act==='del-ev')           deleteEvent(id);
-    if (act==='edit-ev')          editEvent(id);
-  });
+  // pane click delegation lives in setupGlobalListeners — do NOT add it here
 }
 
 // ═══════════════════════════════════════════════
@@ -1251,54 +1232,11 @@ function renderShared() {
 }
 
 function bindShared() {
-  const pane = document.getElementById('pane-shared');
-
-  document.getElementById('g-inp').addEventListener('keydown', e => { if(e.key==='Enter') addGrocery(); });
+  // keydown on freshly-created inputs — safe to re-attach each render
+  document.getElementById('g-inp').addEventListener('keydown',  e => { if(e.key==='Enter') addGrocery(); });
   document.getElementById('td-inp').addEventListener('keydown', e => { if(e.key==='Enter') addTodo(); });
-  document.getElementById('c-inp').addEventListener('keydown', e => { if(e.key==='Enter') addChore(); });
-
-  pane.addEventListener('click', e => {
-    const el  = e.target.closest('[data-act]');
-    if (!el) return;
-    const act = el.dataset.act;
-    const id  = el.dataset.id;
-    // calendar
-    if (act==='cal-prev') {
-      S.calState.month--;
-      if (S.calState.month < 0) { S.calState.month=11; S.calState.year--; }
-      S.calSel = null; renderShared(); return;
-    }
-    if (act==='cal-next') {
-      S.calState.month++;
-      if (S.calState.month > 11) { S.calState.month=0; S.calState.year++; }
-      S.calSel = null; renderShared(); return;
-    }
-    if (act==='cal-day') {
-      S.calSel = S.calSel===el.dataset.date ? null : el.dataset.date;
-      renderShared(); return;
-    }
-    if (act==='add-ev-modal') { showEventModal('both'); return; }
-    if (act==='add-ev-sel')   { showEventModal('both', S.calSel); return; }
-    if (act==='del-ev')       { deleteEvent(id); return; }
-    if (act==='edit-ev')      { editEvent(id); return; }
-    // grocery
-    if (act==='g-add')     addGrocery();
-    if (act==='g-toggle')  toggleGrocery(id);
-    if (act==='g-del')     deleteGrocery(id);
-    if (act==='g-clear')   clearGroceries();
-    // todos
-    if (act==='td-add')    addTodo();
-    if (act==='td-toggle') toggleTodo(id);
-    if (act==='td-del')    deleteTodo(id);
-    if (act==='td-clear')  clearTodos();
-    // chores
-    if (act==='c-add')     addChore();
-    if (act==='c-toggle')  toggleChore(id);
-    if (act==='c-del')     deleteChore(id);
-    if (act==='c-reset')   resetChores();
-    // meals
-    if (act==='meal-edit') openMealModal(el.dataset.day, el.dataset.meal);
-  });
+  document.getElementById('c-inp').addEventListener('keydown',  e => { if(e.key==='Enter') addChore(); });
+  // pane click delegation lives in setupGlobalListeners — do NOT add it here
 }
 
 // ═══════════════════════════════════════════════
@@ -1437,7 +1375,7 @@ async function loadAll() {
 }
 
 function setupGlobalListeners() {
-  // tab switching
+  // ── tab switching ────────────────────────────
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('on'));
@@ -1447,7 +1385,8 @@ function setupGlobalListeners() {
       S.tab = btn.dataset.t;
     });
   });
-  // meal modal
+
+  // ── meal modal ───────────────────────────────
   document.getElementById('meal-cancel').addEventListener('click', closeMealModal);
   document.getElementById('meal-save').addEventListener('click', saveMeal);
   document.getElementById('meal-modal').addEventListener('click', e => {
@@ -1457,7 +1396,66 @@ function setupGlobalListeners() {
     if (e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveMeal();}
   });
 
-  // auto-refresh every 45s — picks up changes from other devices
+  // ── personal pane click delegation (ONE listener each, never re-added) ──
+  ['becca','geoff'].forEach(p => {
+    document.getElementById(`pane-${p}`).addEventListener('click', e => {
+      const el = e.target.closest('[data-act]');
+      if (!el) return;
+      const act = el.dataset.act;
+      const id  = el.dataset.id;
+      const pr  = el.dataset.pri;
+      const pp  = el.dataset.p;
+      if (act==='goal-toggle')      toggleGoal(pp, id);
+      if (act==='goal-del')         deleteGoal(pp, id);
+      if (act==='task-toggle')      toggleTask(pp, pr, id);
+      if (act==='task-del')         deleteTask(pp, pr, id);
+      if (act==='clear-goals')      clearGoals(pp);
+      if (act==='show-event-modal') showEventModal(pp);
+      if (act==='del-ev')           deleteEvent(id);
+      if (act==='edit-ev')          editEvent(id);
+    });
+  });
+
+  // ── shared pane click delegation (ONE listener, never re-added) ─────────
+  document.getElementById('pane-shared').addEventListener('click', e => {
+    const el  = e.target.closest('[data-act]');
+    if (!el) return;
+    const act = el.dataset.act;
+    const id  = el.dataset.id;
+    if (act==='cal-prev') {
+      S.calState.month--;
+      if (S.calState.month < 0) { S.calState.month=11; S.calState.year--; }
+      S.calSel = null; renderShared(); return;
+    }
+    if (act==='cal-next') {
+      S.calState.month++;
+      if (S.calState.month > 11) { S.calState.month=0; S.calState.year++; }
+      S.calSel = null; renderShared(); return;
+    }
+    if (act==='cal-day') {
+      S.calSel = S.calSel===el.dataset.date ? null : el.dataset.date;
+      renderShared(); return;
+    }
+    if (act==='add-ev-modal') { showEventModal('both'); return; }
+    if (act==='add-ev-sel')   { showEventModal('both', S.calSel); return; }
+    if (act==='del-ev')       { deleteEvent(id); return; }
+    if (act==='edit-ev')      { editEvent(id); return; }
+    if (act==='g-add')        addGrocery();
+    if (act==='g-toggle')     toggleGrocery(id);
+    if (act==='g-del')        deleteGrocery(id);
+    if (act==='g-clear')      clearGroceries();
+    if (act==='td-add')       addTodo();
+    if (act==='td-toggle')    toggleTodo(id);
+    if (act==='td-del')       deleteTodo(id);
+    if (act==='td-clear')     clearTodos();
+    if (act==='c-add')        addChore();
+    if (act==='c-toggle')     toggleChore(id);
+    if (act==='c-del')        deleteChore(id);
+    if (act==='c-reset')      resetChores();
+    if (act==='meal-edit')    openMealModal(el.dataset.day, el.dataset.meal);
+  });
+
+  // ── auto-refresh every 45s ───────────────────
   setInterval(async () => {
     const [b, g, sh] = await Promise.all([fbGet('becca'), fbGet('geoff'), fbGet('shared')]);
     for (const [key, fresh] of [['becca',b],['geoff',g]]) {
