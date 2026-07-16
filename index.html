@@ -730,7 +730,7 @@ function weekAheadCard(p) {
     const ds      = localDateStr(d);
     const isToday = i===0;
     const dayEvts = allEvts
-      .filter(e=>e.date===ds && (e.who===p||e.who==='both'))
+      .filter(e=>e.date<=ds && (!e.endDate||e.endDate>=ds) && (e.who===p||e.who==='both'))
       .sort((a,b)=>a.time.localeCompare(b.time));
     const dayName = d.toLocaleDateString('en-US',{weekday:'short'});
     const dayDate = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -741,7 +741,7 @@ function weekAheadCard(p) {
         <div class="week-ev">
           <div class="week-ev-dot" style="background:${accent}"></div>
           <span style="flex:1">${esc(e.title)}</span>
-          <span class="week-ev-time">${esc(fmtTime(e.time))}</span>
+          <span class="week-ev-time">${fmtTime(e.time)}${e.endTime?` – ${fmtTime(e.endTime)}`:''}</span>
           <button class="x-btn" data-act="edit-ev" data-id="${e.id}" style="font-size:11px">✏️</button>
           <button class="x-btn" data-act="del-ev"  data-id="${e.id}">✕</button>
         </div>`).join('');
@@ -774,13 +774,13 @@ function renderPerson(p) {
 
   // schedule — pull from shared events filtered by person
   const evts = (S.data.shared.events||[])
-    .filter(e => (e.who===p||e.who==='both') && e.date===today())
+    .filter(e => (e.who===p||e.who==='both') && e.date<=today() && (!e.endDate||e.endDate>=today()))
     .sort((a,b)=>a.time.localeCompare(b.time));
   const schedHTML = evts.length === 0
     ? `<div class="empty"><div class="empty-icon">✨</div>Clear day ahead</div>`
     : evts.map(e => `
       <div class="ev-item">
-        <div class="ev-time">${esc(fmtTime(e.time))}</div>
+        <div class="ev-time">${fmtTime(e.time)}${e.endTime?`<br><span style="font-size:11px">– ${fmtTime(e.endTime)}</span>`:''}</div>
         <div class="ev-dot" style="background:${accent}"></div>
         <div style="flex:1">
           <div class="ev-ttl">${esc(e.title)}</div>
@@ -959,9 +959,15 @@ function showEventModal(defaultWho='both', defaultDate=null, existing=null) {
       <p>${isEdit ? 'Update this event on the shared calendar.' : 'Saves to the shared calendar and shows up on the right tabs.'}</p>
       <input type="text" id="ev-title" class="ifield" style="width:100%;margin-bottom:8px"
         placeholder="Event title" value="${esc(existing?.title||'')}" />
+      <div style="font-size:11px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Start</div>
       <div style="display:flex;gap:8px;margin-bottom:8px">
-        <input type="date" id="ev-date" class="ifield" style="flex:1" value="${existing?.date||defaultDate||today()}" />
-        <input type="time" id="ev-time" class="ifield" style="flex:1" value="${existing?.time||'09:00'}" />
+        <input type="date" id="ev-date"      class="ifield" style="flex:1" value="${existing?.date||defaultDate||today()}" />
+        <input type="time" id="ev-time"      class="ifield" style="flex:1" value="${existing?.time||'09:00'}" />
+      </div>
+      <div style="font-size:11px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">End <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="date" id="ev-end-date"  class="ifield" style="flex:1" value="${existing?.endDate||''}" placeholder="End date" />
+        <input type="time" id="ev-end-time"  class="ifield" style="flex:1" value="${existing?.endTime||''}" />
       </div>
       <input type="text" id="ev-loc" class="ifield" style="width:100%;margin-bottom:8px"
         placeholder="Location (optional)" value="${esc(existing?.location||'')}" />
@@ -975,18 +981,31 @@ function showEventModal(defaultWho='both', defaultDate=null, existing=null) {
   document.getElementById('ev-cancel').addEventListener('click', () => m.remove());
   m.addEventListener('click', e => { if (e.target===m) m.remove(); });
   document.getElementById('ev-save').addEventListener('click', () => {
-    const title = document.getElementById('ev-title').value.trim();
-    const date  = document.getElementById('ev-date').value;
-    const time  = document.getElementById('ev-time').value;
-    const loc   = document.getElementById('ev-loc').value.trim();
-    const who   = document.getElementById('ev-who').value;
+    const title   = document.getElementById('ev-title').value.trim();
+    const date    = document.getElementById('ev-date').value;
+    const time    = document.getElementById('ev-time').value;
+    const endDate = document.getElementById('ev-end-date').value;
+    const endTime = document.getElementById('ev-end-time').value;
+    const loc     = document.getElementById('ev-loc').value.trim();
+    const who     = document.getElementById('ev-who').value;
     if (!title||!date||!time) return;
+    if (endDate && endDate < date) {
+      document.getElementById('ev-end-date').style.borderColor = 'var(--urgent)';
+      return;
+    }
+    const evt = {
+      id: existing?.id || uid(),
+      title, date, time,
+      ...(endDate ? { endDate } : {}),
+      ...(endTime ? { endTime } : {}),
+      location: loc, who
+    };
     if (!S.data.shared.events) S.data.shared.events = [];
     if (isEdit) {
       const idx = S.data.shared.events.findIndex(e=>e.id===existing.id);
-      if (idx !== -1) S.data.shared.events[idx] = { ...existing, title, date, time, location:loc, who };
+      if (idx !== -1) S.data.shared.events[idx] = evt;
     } else {
-      S.data.shared.events.push({id:uid(), title, date, time, location:loc, who});
+      S.data.shared.events.push(evt);
     }
     fbSet('shared', S.data.shared);
     // navigate calendar to the event's month and select the day
@@ -1034,7 +1053,7 @@ function renderCalendar() {
   }
 
   const cellsHTML = cells.map(c => {
-    const dayEvts   = events.filter(e=>e.date===c.dateStr);
+    const dayEvts   = events.filter(e=>e.date<=c.dateStr && (!e.endDate||e.endDate>=c.dateStr));
     const isToday   = c.dateStr===todayStr;
     const isSel     = c.dateStr===S.calSel;
     const chipsHTML = dayEvts.slice(0,2).map(e => {
@@ -1053,7 +1072,7 @@ function renderCalendar() {
   // selected day panel
   let selPanel = '';
   if (S.calSel) {
-    const selEvts = events.filter(e=>e.date===S.calSel).sort((a,b)=>a.time.localeCompare(b.time));
+    const selEvts = events.filter(e=>e.date<=S.calSel && (!e.endDate||e.endDate>=S.calSel)).sort((a,b)=>a.time.localeCompare(b.time));
     const selLabel = new Date(S.calSel+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
     const evtRows  = selEvts.length === 0
       ? `<div class="week-free" style="padding:8px 0">No events — <button class="link-btn" data-act="add-ev-sel">add one</button></div>`
@@ -1062,7 +1081,7 @@ function renderCalendar() {
           const pilCls = e.who==='becca'?'pill-becca':e.who==='geoff'?'pill-geoff':'pill-both';
           const pilTxt = e.who==='becca'?'Becca':e.who==='geoff'?'Geoff':'Both';
           return `<div class="cal-ev-row">
-            <div class="cal-ev-time">${fmtTime(e.time)||'All day'}</div>
+            <div class="cal-ev-time">${fmtTime(e.time)||'All day'}${e.endTime?` – ${fmtTime(e.endTime)}`:''}</div>
             <div class="cal-ev-dot" style="background:${col}"></div>
             <div class="cal-ev-info">
               <div class="cal-ev-ttl">${esc(e.title)}</div>
@@ -1436,7 +1455,7 @@ function setupGlobalListeners() {
       S.calSel = S.calSel===el.dataset.date ? null : el.dataset.date;
       renderShared(); return;
     }
-    if (act==='add-ev-modal') { showEventModal('both'); return; }
+    if (act==='add-ev-modal') { showEventModal('both', S.calSel); return; }
     if (act==='add-ev-sel')   { showEventModal('both', S.calSel); return; }
     if (act==='del-ev')       { deleteEvent(id); return; }
     if (act==='edit-ev')      { editEvent(id); return; }
