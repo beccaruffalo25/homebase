@@ -113,7 +113,75 @@
     /* ── GRID ─────────────────────────────────────────────── */
     .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
     .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-    @media (max-width: 760px) { .g2, .g3 { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      /* header */
+      header { padding: 0 12px; gap: 8px; height: auto; min-height: 52px; flex-wrap: wrap; }
+      .logo  { font-size: 14px; }
+      .tabs  { order: 2; flex: 1 0 100%; padding: 3px 0 5px; background: none; gap: 4px; }
+      .tab-btn { flex: 1; padding: 7px 4px; font-size: 13px; text-align: center; }
+      #clock { display: none; }
+
+      /* main */
+      main { padding: 12px; }
+      .card { padding: 14px; }
+      .p-head { margin-bottom: 16px; }
+      .greeting   { font-size: 22px; }
+      .dateline   { font-size: 13px; }
+      .shared-hdr { margin-bottom: 16px; }
+      .shared-ttl { font-size: 22px; }
+
+      /* progress card */
+      .progress-pct { font-size: 26px; }
+      .bd-bar { width: 36px; }
+      .breakdown { gap: 8px; }
+
+      /* cards and grids */
+      .g2, .g3 { grid-template-columns: 1fr; }
+      .card-ttl { font-size: 14px; }
+
+      /* week ahead */
+      .week-day-col { min-width: 48px; }
+      .week-day-name { font-size: 11px; }
+      .week-ev-time { font-size: 10px; }
+      .week-ev { gap: 6px; }
+
+      /* schedule */
+      .ev-time { min-width: 58px; font-size: 11px; }
+
+      /* input rows — wrap so select+button don't crush the text field */
+      .irow { flex-wrap: wrap; }
+      .irow .ifield { flex: 1 0 100%; }
+      .irow .isel { flex: 1; min-width: 90px; }
+
+      /* calendar — turn chips into colored dots, compact cell height */
+      .cal-cell { min-height: 42px; padding: 3px 2px; }
+      .cal-day-num { font-size: 11px; margin-bottom: 1px; }
+      .cal-chip {
+        width: 6px; height: 6px; border-radius: 50%;
+        padding: 0; font-size: 0; overflow: hidden;
+        display: inline-block; margin: 1px 1px 0;
+      }
+      .cal-dow { font-size: 10px; padding: 3px 0; }
+      .cal-month-lbl { font-size: 13px; }
+      .cal-sel-panel { padding-top: 10px; }
+      .cal-ev-row { padding: 7px 8px; gap: 7px; }
+      .cal-ev-time { min-width: 50px; font-size: 11px; }
+      .cal-ev-ttl  { font-size: 13px; }
+
+      /* modals */
+      .modal { padding: 20px 16px; }
+      .modal h2 { font-size: 17px; margin-bottom: 6px; }
+      .modal p { margin-bottom: 14px; }
+
+      /* meal plan cells — already h-scrolls, just compact */
+      .meal-slot { min-height: 42px; padding: 5px 6px; }
+      .meal-txt  { font-size: 11px; }
+      .meal-day  { min-width: 80px; }
+
+      /* chore/todo rows */
+      .chore-row { padding: 8px; }
+      .assignee-pill { font-size: 10px; padding: 1px 6px; }
+    }
 
     /* ── CARD ─────────────────────────────────────────────── */
     .card { background: var(--card); border-radius: var(--r); padding: 20px; box-shadow: var(--shadow); }
