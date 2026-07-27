@@ -60,17 +60,25 @@ function computeEnd(ev) {
     const lastDay = ev.endDate || ev.date;
     return { date: addDays(lastDay, 1), allDay: true };
   }
-  if (ev.endDate) {
-    return { date: ev.endDate, time: ev.endTime || ev.time, allDay: false };
-  }
-  if (ev.endTime) {
-    return { date: ev.date, time: ev.endTime, allDay: false };
-  }
   const start = new Date(`${ev.date}T${ev.time}:00Z`);
-  start.setUTCHours(start.getUTCHours() + 1);
+  let end;
+  if (ev.endDate && ev.endTime) {
+    end = new Date(`${ev.endDate}T${ev.endTime}:00Z`);
+  } else if (ev.endDate) {
+    end = new Date(`${ev.endDate}T${ev.time}:00Z`);
+  } else if (ev.endTime) {
+    end = new Date(`${ev.date}T${ev.endTime}:00Z`);
+  }
+  // Stored end info that doesn't actually extend past the start (e.g. a
+  // stray endDate equal to the start date with no endTime) falls back to
+  // a default 1-hour duration instead of producing a zero-length event.
+  if (!end || end <= start) {
+    end = new Date(start);
+    end.setUTCHours(end.getUTCHours() + 1);
+  }
   return {
-    date: start.toISOString().slice(0, 10),
-    time: start.toISOString().slice(11, 16),
+    date: end.toISOString().slice(0, 10),
+    time: end.toISOString().slice(11, 16),
     allDay: false,
   };
 }
