@@ -374,6 +374,7 @@
     .cal-cell {
       min-height:68px; padding:5px 4px; border-radius:8px;
       cursor:pointer; transition:background 0.1s; position:relative;
+      border:1px solid var(--border);
     }
     .cal-cell:hover { background:var(--bg); }
     .cal-cell.other-month { opacity:0.3; pointer-events:none; }
@@ -388,6 +389,10 @@
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       margin-bottom:2px; display:block; max-width:100%;
     }
+    /* keeps an event's lane in the same vertical position even on days
+       where that particular event has no chip, so multi-day events don't
+       visually jump rows depending on what else is happening that day */
+    .cal-chip-empty { background:transparent; }
     .cal-sel-panel {
       border-top:1px solid var(--border); padding-top:14px; margin-top:4px;
     }
@@ -652,6 +657,8 @@ function localDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 const today = () => localDateStr(new Date());
+// An event with no endDate ends on its own start date, not "never"
+const evEnd = e => e.endDate || e.date;
 
 // Firebase stores arrays as {0:…,1:…} — convert back to real arrays
 function ensureArr(val) {
@@ -798,7 +805,7 @@ function weekAheadCard(p) {
     const ds      = localDateStr(d);
     const isToday = i===0;
     const dayEvts = allEvts
-      .filter(e=>e.date<=ds && (!e.endDate||e.endDate>=ds) && (e.who===p||e.who==='both'))
+      .filter(e=>e.date<=ds && evEnd(e)>=ds && (e.who===p||e.who==='both'))
       .sort((a,b)=>a.time.localeCompare(b.time));
     const dayName = d.toLocaleDateString('en-US',{weekday:'short'});
     const dayDate = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -842,7 +849,7 @@ function renderPerson(p) {
 
   // schedule — pull from shared events filtered by person
   const evts = (S.data.shared.events||[])
-    .filter(e => (e.who===p||e.who==='both') && e.date<=today() && (!e.endDate||e.endDate>=today()))
+    .filter(e => (e.who===p||e.who==='both') && e.date<=today() && evEnd(e)>=today())
     .sort((a,b)=>a.time.localeCompare(b.time));
   const schedHTML = evts.length === 0
     ? `<div class="empty"><div class="empty-icon">✨</div>Clear day ahead</div>`
@@ -1120,15 +1127,44 @@ function renderCalendar() {
     cells.push({ day:d, dateStr: localDateStr(new Date(year,month+1,d)), other:true });
   }
 
+  // Events touching this 6-week grid at all, walked in chronological order
+  // (ties broken by the longer-running event first) so lane bookkeeping
+  // never has to look backward in time.
+  const gridStart = cells[0].dateStr, gridEnd = cells[cells.length-1].dateStr;
+  const MAX_LANES = 2;
+  const laneOf    = {};
+  const laneEnds  = []; // laneEnds[lane] = last dateStr that lane is occupied through
+  events
+    .filter(e => e.date<=gridEnd && evEnd(e)>=gridStart)
+    .sort((a,b) => a.date.localeCompare(b.date) || (evEnd(b)>b.date?1:0)-(evEnd(a)>a.date?1:0) || a.time.localeCompare(b.time))
+    .forEach(e => {
+      let lane = laneEnds.findIndex(end => end < e.date);
+      if (lane === -1) { lane = laneEnds.length; }
+      laneEnds[lane] = evEnd(e);
+      laneOf[e.id] = lane;
+    });
+
   const cellsHTML = cells.map(c => {
-    const dayEvts   = events.filter(e=>e.date<=c.dateStr && (!e.endDate||e.endDate>=c.dateStr));
+    const dayEvts   = events.filter(e=>e.date<=c.dateStr && evEnd(e)>=c.dateStr);
     const isToday   = c.dateStr===todayStr;
     const isSel     = c.dateStr===S.calSel;
-    const chipsHTML = dayEvts.slice(0,2).map(e => {
+
+    // Every event keeps the same vertical lane across all the days it spans,
+    // so a multi-day event's chip doesn't jump rows depending on how many
+    // other events happen to fall on a given day.
+    const slots = Array(MAX_LANES).fill(null);
+    let overflow = 0;
+    dayEvts.forEach(e => {
+      const lane = laneOf[e.id];
+      if (lane < MAX_LANES) slots[lane] = e; else overflow++;
+    });
+
+    const chipsHTML = slots.map(e => {
+      if (!e) return `<span class="cal-chip cal-chip-empty" aria-hidden="true"></span>`;
       const col = e.who==='becca'?'var(--becca)':e.who==='geoff'?'var(--geoff)':'var(--shared)';
       const bg  = e.who==='becca'?'var(--becca-bg)':e.who==='geoff'?'var(--geoff-bg)':'var(--shared-bg)';
       return `<span class="cal-chip" style="color:${col};background:${bg}">${esc(e.title)}</span>`;
-    }).join('') + (dayEvts.length>2 ? `<span style="font-size:10px;color:var(--sub)">+${dayEvts.length-2} more</span>` : '');
+    }).join('') + (overflow>0 ? `<span style="font-size:10px;color:var(--sub)">+${overflow} more</span>` : '');
 
     return `<div class="cal-cell ${c.other?'other-month':''} ${isToday?'is-today':''} ${isSel?'is-sel':''}"
       data-act="cal-day" data-date="${c.dateStr}">
@@ -1140,7 +1176,7 @@ function renderCalendar() {
   // selected day panel
   let selPanel = '';
   if (S.calSel) {
-    const selEvts = events.filter(e=>e.date<=S.calSel && (!e.endDate||e.endDate>=S.calSel)).sort((a,b)=>a.time.localeCompare(b.time));
+    const selEvts = events.filter(e=>e.date<=S.calSel && evEnd(e)>=S.calSel).sort((a,b)=>a.time.localeCompare(b.time));
     const selLabel = new Date(S.calSel+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
     const evtRows  = selEvts.length === 0
       ? `<div class="week-free" style="padding:8px 0">No events — <button class="link-btn" data-act="add-ev-sel">add one</button></div>`
